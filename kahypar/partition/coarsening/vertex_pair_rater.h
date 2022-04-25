@@ -156,6 +156,11 @@ class VertexPairRater {
  private:
   bool belowThresholdNodeWeight(const HypernodeWeight weight_u,
                                 const HypernodeWeight weight_v) const {
+                                  
+    if (_context.coarsening.ignore_max_node_weight) {
+      std::cout << "max node weight ignored" << std::endl;
+      return true;
+    }
     return weight_v + weight_u <= _context.coarsening.max_allowed_node_weight;
   }
 

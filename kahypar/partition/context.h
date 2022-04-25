@@ -120,17 +120,19 @@ inline std::ostream& operator<< (std::ostream& str, const PreprocessingParameter
 }
 
 struct RatingParameters {
+  //my parameter, timo
+  IgnoreMaxNodeWeight ignore_max_node_weight = IgnoreMaxNodeWeight::UNDEFINED;
   RatingFunction rating_function = RatingFunction::UNDEFINED;
   CommunityPolicy community_policy = CommunityPolicy::UNDEFINED;
   HeavyNodePenaltyPolicy heavy_node_penalty_policy = HeavyNodePenaltyPolicy::UNDEFINED;
   AcceptancePolicy acceptance_policy = AcceptancePolicy::UNDEFINED;
   RatingPartitionPolicy partition_policy = RatingPartitionPolicy::normal;
-  FixVertexContractionAcceptancePolicy fixed_vertex_acceptance_policy =
-    FixVertexContractionAcceptancePolicy::UNDEFINED;
+  FixVertexContractionAcceptancePolicy fixed_vertex_acceptance_policy = FixVertexContractionAcceptancePolicy::UNDEFINED;
 };
 
 inline std::ostream& operator<< (std::ostream& str, const RatingParameters& params) {
   str << "  Rating Parameters:" << std::endl;
+  str << "    Ignore Max Node Weight:           " << params.ignore_max_node_weight << std::endl;
   str << "    Rating Function:                  " << params.rating_function << std::endl;
   str << "    Use Community Structure:          " << params.community_policy << std::endl;
   str << "    Heavy Node Penalty:               " << params.heavy_node_penalty_policy << std::endl;
@@ -146,7 +148,6 @@ struct CoarseningParameters {
   RatingParameters rating = { };
   HypernodeID contraction_limit_multiplier = std::numeric_limits<HypernodeID>::max();
   double max_allowed_weight_multiplier = std::numeric_limits<double>::max();
-//rtimo, ignore weight bool timo
   // Those will be determined dynamically
   HypernodeWeight max_allowed_node_weight = 0;
   HypernodeID contraction_limit = 0;

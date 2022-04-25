@@ -53,6 +53,12 @@ enum class CommunityPolicy : uint8_t {
   UNDEFINED
 };
 
+enum class IgnoreMaxNodeWeight : uint8_t {
+  respect_max_node_weight,
+  ignore_max_node_weight,
+  UNDEFINED
+};
+
 enum class HeavyNodePenaltyPolicy : uint8_t {
   no_penalty,
   multiplicative_penalty,
@@ -300,6 +306,16 @@ static std::ostream& operator<< (std::ostream& os, const RatingFunction& func) {
   return os << static_cast<uint8_t>(func);
 }
 
+static std::ostream& operator<< (std::ostream& os, const IgnoreMaxNodeWeight& ignore) {
+  switch (ignore) {
+    case IgnoreMaxNodeWeight::ignore_max_node_weight: return os << "ignore_max_node_weight";
+    case IgnoreMaxNodeWeight::respect_max_node_weight: return os << "respect_max_node_weight";
+    case IgnoreMaxNodeWeight::UNDEFINED: return os << "UNDEFINED";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(ignore);
+}
+
 static std::ostream& operator<< (std::ostream& os, const Objective& objective) {
   switch (objective) {
     case Objective::cut: return os << "cut";
@@ -454,6 +470,16 @@ static AcceptancePolicy acceptanceCriterionFromString(const std::string& crit) {
   exit(0);
 }
 
+static IgnoreMaxNodeWeight ignoreMaxNodeWeightFromString(const std::string& crit) {
+  if (crit == "true") {
+    return IgnoreMaxNodeWeight::ignore_max_node_weight;
+  } else if (crit == "false") {
+    return IgnoreMaxNodeWeight::respect_max_node_weight;
+  }
+  LOG << "No valid boolean if max node weight should be ignored while rating.";
+  exit(0);
+}
+
 static RatingPartitionPolicy ratingPartitionPolicyFromString(const std::string& partition) {
   if (partition == "normal") {
     return RatingPartitionPolicy::normal;
@@ -580,6 +606,8 @@ static InitialPartitionerAlgorithm initialPartitioningAlgorithmFromString(const 
     return InitialPartitionerAlgorithm::random;
   } else if (mode == "pool") {
     return InitialPartitionerAlgorithm::pool;
+  } else if (mode == "bin_packing") {
+    return InitialPartitionerAlgorithm::bin_packing;
   }
   LOG << "Illegal option:" << mode;
   exit(0);

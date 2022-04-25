@@ -287,7 +287,21 @@ po::options_description createCoarseningOptionsDescription(Context& context,
     "Acceptance criterion for fixed vertex contractions:\n"
     "- free_vertex_only     : Allows (free, free) and (fixed, free)\n"
     "- fixed_vertex_allowed : Allows (free, free), (fixed, free), and (fixed, fixed) \n"
-    "- equivalent_vertices  : Allows (free, free), (fixed, fixed)");
+    "- equivalent_vertices  : Allows (free, free), (fixed, fixed)")
+    ((initial_partitioning ? "i-c-ignore-max-node-weight" : "c-ignore-max-node-weight"),
+    po::value<std::string>()->value_name("<string>")->notifier(
+      [&context, initial_partitioning](const std::string& crit) {
+      if (initial_partitioning) {
+        context.initial_partitioning.coarsening.rating.ignore_max_node_weight =
+          kahypar::ignoreMaxNodeWeightFromString(crit);
+      } else {
+        context.coarsening.rating.ignore_max_node_weight =
+          kahypar::ignoreMaxNodeWeightFromString(crit);
+      }
+    }),
+    "Ignore max node weight when contraction nodes:\n"
+    "- true\n"
+    "- false");
   return options;
 }
 
