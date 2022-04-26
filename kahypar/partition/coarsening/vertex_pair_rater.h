@@ -82,7 +82,9 @@ class VertexPairRater {
     _hg(hypergraph),
     _context(context),
     _tmp_ratings(_hg.initialNumNodes()),
-    _already_matched(_hg.initialNumNodes()) { }
+    _already_matched(_hg.initialNumNodes()),
+    _num_denied_contractions(0),
+    _num_ignores(0) { }
 
   VertexPairRater(const VertexPairRater&) = delete;
   VertexPairRater& operator= (const VertexPairRater&) = delete;
@@ -90,7 +92,10 @@ class VertexPairRater {
   VertexPairRater(VertexPairRater&&) = delete;
   VertexPairRater& operator= (VertexPairRater&&) = delete;
 
-  ~VertexPairRater() = default;
+  ~VertexPairRater() {
+    std::cout << "Number of times max node weight ignored: " << _num_ignores << std::endl;
+    std::cout << "Number of times contraction denied because of weight: " << _num_denied_contractions << std::endl;
+  }
 
   VertexPairRating rate(const HypernodeID u) {
     DBG << "Calculating rating for HN" << u;
@@ -155,18 +160,26 @@ class VertexPairRater {
 
  private:
   bool belowThresholdNodeWeight(const HypernodeWeight weight_u,
-                                const HypernodeWeight weight_v) const {
-                                  
-    if (_context.coarsening.ignore_max_node_weight) {
-      std::cout << "max node weight ignored" << std::endl;
+                                const HypernodeWeight weight_v) {
+    if (weight_v + weight_u <= _context.coarsening.max_allowed_node_weight) {
       return true;
+    } else {
+      if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
+        _num_ignores++;
+        return true;
+      }
     }
-    return weight_v + weight_u <= _context.coarsening.max_allowed_node_weight;
+    _num_denied_contractions++;
+    return false;
+      
   }
 
   Hypergraph& _hg;
   const Context& _context;
   ds::SparseMap<HypernodeID, RatingType> _tmp_ratings;
   ds::FastResetFlagArray<> _already_matched;
+  u_int16_t _num_denied_contractions;
+  u_int16_t _num_ignores;
+  
 };
 }  // namespace kahypar
