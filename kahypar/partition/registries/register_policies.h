@@ -53,7 +53,7 @@ REGISTER_POLICY(CommunityPolicy, CommunityPolicy::use_communities,
                 UseCommunityStructure);
 REGISTER_POLICY(CommunityPolicy, CommunityPolicy::ignore_communities,
                 IgnoreCommunityStructure);
-
+//timo, hier auch meine policy
 REGISTER_POLICY(HeavyNodePenaltyPolicy, HeavyNodePenaltyPolicy::no_penalty,
                 NoWeightPenalty);
 REGISTER_POLICY(HeavyNodePenaltyPolicy, HeavyNodePenaltyPolicy::multiplicative_penalty,

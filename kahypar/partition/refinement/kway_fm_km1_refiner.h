@@ -158,7 +158,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
       Gain max_gain = kInvalidGain;
       HypernodeID max_gain_node = kInvalidHN;
       PartitionID to_part = Hypergraph::kInvalidPartition;
-      _pq.deleteMax(max_gain_node, max_gain, to_part);
+      _pq.deleteMax(max_gain_node, max_gain, to_part); //to_part, part wo er hin soll, timo
       const PartitionID from_part = _hg.partID(max_gain_node);
 
       DBG << V(current_km1) << V(max_gain_node) << V(max_gain)
@@ -193,7 +193,7 @@ class KWayKMinusOneRefiner final : public IRefiner,
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
 
-      if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) {
+      if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) { //target imbalance drin umsetzen
         Base::moveHypernode(max_gain_node, from_part, to_part);
 
         Base::updatePQpartState(from_part,
@@ -211,14 +211,14 @@ class KWayKMinusOneRefiner final : public IRefiner,
         HEAVY_REFINEMENT_ASSERT(current_imbalance == metrics::imbalance(_hg, _context),
                V(current_imbalance) << V(metrics::imbalance(_hg, _context)));
 
-        updateNeighbours(max_gain_node, from_part, to_part);
+        updateNeighbours(max_gain_node, from_part, to_part); //auch wichtig, timo, gains in pq und in cache
 
         // right now, we do not allow a decrease in cut in favor of an increase in balance
         const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
                                                  (current_km1 < best_metrics.km1);
         const bool improved_balance_less_equal_km1 = (current_imbalance < best_metrics.imbalance) &&
                                                      (current_km1 <= best_metrics.km1);
-
+        // acceptance policy vom paper reinpacken, timo
         if (improved_km1_within_balance || improved_balance_less_equal_km1) {
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
