@@ -24,7 +24,7 @@
 
 #if defined(_WIN32)
 #include <windows.h>
-#include <process.h>
+//#include <process.h> timo
 #else
 #include <sys/ioctl.h>
 #endif
@@ -327,6 +327,7 @@ po::options_description createRefinementOptionsDescription(Context& context,
     " - kway_fm                      : k-way FM algorithm         (direct k-way        : cut)\n"
     " - kway_fm_hyperflow_cutter     : k-way FM + HyperFlowCutter (direct k-way        : cut)\n"
     " - kway_fm_km1                  : k-way FM algorithm         (direct k-way        : km1)\n"
+    " - custom_kway_fm_km1           : custom k-way FM algorithm  (direct k-way        : km1)\n"
     " - kway_fm_hyperflow_cutter_km1 : k-way FM + HyperFlowCutter (direct k-way        : km1)\n"
     " - kway_hyperflow_cutter        : k-way HyperFlowCutter      (direct k-way        : cut & km1)\n"
     )

@@ -220,6 +220,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
+      params.algorithm == RefinementAlgorithm::custom_kway_fm_km1 || //timo custom
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -233,6 +234,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
+      params.algorithm == RefinementAlgorithm::custom_kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -524,6 +526,7 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
 static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::kway_fm ||
       algo == RefinementAlgorithm::kway_fm_km1 ||
+      algo == RefinementAlgorithm::custom_kway_fm_km1 || //custom timo
       algo == RefinementAlgorithm::kway_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1) {
