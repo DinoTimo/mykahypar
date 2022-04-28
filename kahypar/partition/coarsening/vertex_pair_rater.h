@@ -93,8 +93,10 @@ class VertexPairRater {
   VertexPairRater& operator= (VertexPairRater&&) = delete;
 
   ~VertexPairRater() {
-    std::cout << "Number of times max node weight ignored: " << _num_ignores << std::endl;
-    std::cout << "Number of times contraction denied because of weight: " << _num_denied_contractions << std::endl;
+    if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
+      std::cout << "Number of times max node weight ignored: " << _num_ignores << std::endl;
+      std::cout << "Number of times contraction denied because of weight: " << _num_denied_contractions << std::endl;
+    }
   }
 
   VertexPairRating rate(const HypernodeID u) {
