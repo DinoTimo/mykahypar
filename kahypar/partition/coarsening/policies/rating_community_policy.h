@@ -31,7 +31,7 @@ class UseCommunityStructure final : public meta::PolicyBase {
  public:
   KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static inline bool sameCommunity(const std::vector<PartitionID>& communities,
                                                                    const HypernodeID u, const HypernodeID v) {
-    return communities[u] == communities[v];
+    return communities[u] == communities[v]; //detect here, if one of the two communities is only of size one? And if that's the case, return true anyways?
   }
 };
 

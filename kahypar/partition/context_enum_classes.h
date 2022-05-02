@@ -59,6 +59,12 @@ enum class IgnoreMaxNodeWeight : uint8_t {
   UNDEFINED
 };
 
+enum class ContractCommunities : uint8_t {
+  contract_communities,
+  dont_contract_communities,
+  UNDEFINED
+};
+
 enum class HeavyNodePenaltyPolicy : uint8_t {
   no_penalty,
   multiplicative_penalty,
@@ -317,6 +323,16 @@ static std::ostream& operator<< (std::ostream& os, const IgnoreMaxNodeWeight& ig
   return os << static_cast<uint8_t>(ignore);
 }
 
+static std::ostream& operator<< (std::ostream& os, const ContractCommunities& contract) {
+  switch (contract) {
+    case ContractCommunities::contract_communities: return os << "contract_communities";
+    case ContractCommunities::dont_contract_communities: return os << "dont_contract_communities";
+    case ContractCommunities::UNDEFINED: return os << "UNDEFINED";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(contract);
+}
+
 static std::ostream& operator<< (std::ostream& os, const Objective& objective) {
   switch (objective) {
     case Objective::cut: return os << "cut";
@@ -479,6 +495,16 @@ static IgnoreMaxNodeWeight ignoreMaxNodeWeightFromString(const std::string& crit
     return IgnoreMaxNodeWeight::respect_max_node_weight;
   }
   LOG << "No valid boolean if max node weight should be ignored while rating.";
+  exit(0);
+}
+
+static ContractCommunities contractCommunitiesFromString(const std::string& crit) {
+  if (crit == "true") {
+    return ContractCommunities::contract_communities;
+  } else if (crit == "false") {
+    return ContractCommunities::dont_contract_communities;
+  }
+  LOG << "No valid boolean if communities should be contracted while rating.";
   exit(0);
 }
 

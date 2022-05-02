@@ -245,6 +245,18 @@ po::options_description createCoarseningOptionsDescription(Context& context,
     }),
     "Use community information during rating. If c-rating-use-communities=true ,\n"
     "only neighbors belonging to the same community will be considered as contraction partner.")
+    ((initial_partitioning ? "i-c-rating-contract-communities" : "c-rating-contract-communities"),
+    po::value<std::string>()->value_name("<string>")->notifier(
+      [&context, initial_partitioning](const std::string& contract_communities) {
+      if (initial_partitioning) {
+        context.initial_partitioning.coarsening.rating.contract_communities = kahypar::contractCommunitiesFromString(contract_communities);
+      } else {
+        context.coarsening.rating.contract_communities = kahypar::contractCommunitiesFromString(contract_communities);
+      }
+    }),
+    "Contract communities of size 1:\n"
+    " - contract_communities\n"
+    " - dont_contract_communities")
     ((initial_partitioning ? "i-c-rating-heavy_node_penalty" : "c-rating-heavy_node_penalty"),
     po::value<std::string>()->value_name("<string>")->notifier(
       [&context, initial_partitioning](const std::string& penalty) {

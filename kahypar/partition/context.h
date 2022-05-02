@@ -123,6 +123,7 @@ struct RatingParameters {
   //my parameter, timo
   IgnoreMaxNodeWeight ignore_max_node_weight = IgnoreMaxNodeWeight::UNDEFINED;
   RatingFunction rating_function = RatingFunction::UNDEFINED;
+  ContractCommunities contract_communities = ContractCommunities::UNDEFINED; 
   CommunityPolicy community_policy = CommunityPolicy::UNDEFINED;
   HeavyNodePenaltyPolicy heavy_node_penalty_policy = HeavyNodePenaltyPolicy::UNDEFINED;
   AcceptancePolicy acceptance_policy = AcceptancePolicy::UNDEFINED;
@@ -135,6 +136,7 @@ inline std::ostream& operator<< (std::ostream& str, const RatingParameters& para
   str << "    Ignore Max Node Weight:           " << params.ignore_max_node_weight << std::endl;
   str << "    Rating Function:                  " << params.rating_function << std::endl;
   str << "    Use Community Structure:          " << params.community_policy << std::endl;
+  str << "    Contract Communities of Size 1:   " << params.contract_communities << std::endl;
   str << "    Heavy Node Penalty:               " << params.heavy_node_penalty_policy << std::endl;
   str << "    Acceptance Policy:                " << params.acceptance_policy << std::endl;
   str << "    Partition Policy:                 " << params.partition_policy << std::endl;
