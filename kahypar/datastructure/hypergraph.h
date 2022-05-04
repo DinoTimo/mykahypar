@@ -531,6 +531,8 @@ class GenericHypergraph {
   using IncidenceIterator = typename std::vector<VertexID>::const_iterator;
   // ! Iterator to iterator over the hypernodes
   using HypernodeIterator = HypergraphElementIterator<const Hypernode>;
+  // ! Iterator to iterate over community sizes
+  using CommunitySizeIterator = HypergraphElementIterator<const HypernodeWeight>;
   // ! Iterator to iterator over the hyperedges
   using HyperedgeIterator = HypergraphElementIterator<const Hyperedge>;
 
@@ -623,6 +625,7 @@ class GenericHypergraph {
     _hyperedges(_num_hyperedges, Hyperedge(0, 0, 1)),
     _incidence_array(_num_pins, 0),
     _communities(_num_hypernodes, 0),
+    _community_sizes(_num_hypernodes, 0),
     _fixed_vertices(nullptr),
     _fixed_vertex_part_id(),
     _part_info(_k),
@@ -701,6 +704,7 @@ class GenericHypergraph {
     _hyperedges(),
     _incidence_array(),
     _communities(),
+    _community_sizes(),
     _fixed_vertices(nullptr),
     _fixed_vertex_part_id(),
     _part_info(_k),
@@ -919,6 +923,8 @@ class GenericHypergraph {
            "Hypernode " << v << " is a fixed vertex and have to be the representive of the contraction");
 
     DBG << "contracting (" << u << "," << v << ")";
+
+    _community_sizes[v]--;
 
     hypernode(u).setWeight(hypernode(u).weight() + hypernode(v).weight());
     if (isFixedVertex(u)) {
@@ -1498,6 +1504,10 @@ class GenericHypergraph {
     return hypernode(u).weight();
   }
 
+  HypernodeWeight communitySize(const PartitionID p) const {
+    return _community_sizes[p];
+  }
+
   void setNodeWeight(const HypernodeID u, const HypernodeWeight weight) {
     ASSERT(!hypernode(u).isDisabled(), "Hypernode" << u << "is disabled");
     _total_weight -= hypernode(u).weight();
@@ -1768,6 +1778,13 @@ class GenericHypergraph {
   void setCommunities(std::vector<PartitionID>&& communities) {
     ASSERT(communities.size() == _current_num_hypernodes);
     _communities = std::move(communities);
+  }
+
+  void countCommunitySizes() {
+    ASSERT(_communities.size() == _current_num_hypernodes);
+    for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
+      _community_sizes[hn]++;
+    }
   }
 
   void resetCommunities() {
@@ -2138,6 +2155,10 @@ class GenericHypergraph {
   // ! Stores the community structure revealed by community detection algorithms.
   // ! If community detection is disabled, all HNs are in the same community.
   std::vector<PartitionID> _communities;
+  // ! Stores current community sizes, not weights! Only counting the number of vertices not, their weights.
+  // ! Is updated with each contraction
+  std::vector<HypernodeWeight> _community_sizes;
+
   // ! Stores fixed vertices
   std::unique_ptr<SparseSet<HypernodeID> > _fixed_vertices;
   // ! Stores fixed vertex part ids

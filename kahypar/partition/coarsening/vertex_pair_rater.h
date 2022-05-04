@@ -114,15 +114,7 @@ class VertexPairRater {
         }
       }
     }
-    std::map<PartitionID, size_t> _community_sizes; //this should not be here.
-    if (_context.coarsening.rating.contract_communities == ContractCommunities::contract_communities) {
-      for (HypernodeID hypernode = 0; hypernode < _hg.currentNumNodes(); hypernode++) {
-        if (_hg.nodeIsEnabled(hypernode)) {
-          PartitionID community = _hg.communities()[hypernode]; 
-          _community_sizes[community]++;
-        }
-      }
-    }
+    
     RatingType max_rating = std::numeric_limits<RatingType>::min();
     HypernodeID target = std::numeric_limits<HypernodeID>::max();
     for (auto it = _tmp_ratings.end() - 1; it >= _tmp_ratings.begin(); --it) {
@@ -134,7 +126,7 @@ class VertexPairRater {
       const RatingType tmp_rating = it->value / static_cast<double>(penalty);
       DBG << "r(" << u << "," << tmp_target << ")=" << tmp_rating;
       if (_context.coarsening.rating.contract_communities == ContractCommunities::contract_communities) {
-        if ((CommunityPolicy::sameCommunity(_hg.communities(), u, tmp_target) || _community_sizes[_hg.communities()[u]] <= 1 || _community_sizes[_hg.communities()[tmp_target]] <= 1) &&
+        if ((CommunityPolicy::sameCommunity(_hg.communities(), u, tmp_target) || _hg.communitySize(_hg.communities()[u]) <= 1 || _hg.communitySize(_hg.communities()[tmp_target]) <= 1) &&
           AcceptancePolicy::acceptRating(tmp_rating, max_rating, target, tmp_target, _already_matched) &&
           FixedVertexPolicy::acceptContraction(_hg, _context, u, tmp_target)) {
           max_rating = tmp_rating;
