@@ -65,7 +65,8 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
   bool doUncoarsen(IRefiner& refiner) {
     Metrics current_metrics = { metrics::hyperedgeCut(_hg),
                                 metrics::km1(_hg),
-                                metrics::imbalance(_hg, _context) };
+                                metrics::imbalance(_hg, _context),
+                                metrics::heaviest_domain_weight(_hg) };
     HyperedgeWeight initial_objective = std::numeric_limits<HyperedgeWeight>::min();
   //hier imbalance loggen bei jedem Schritt.
     switch (_context.partition.objective) {

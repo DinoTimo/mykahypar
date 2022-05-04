@@ -190,8 +190,12 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
-
-      if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) { //target imbalance drin umsetzen
+      /**
+       * Move of vertex v from part p to part q is feasible if:
+       * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
+       * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
+       */
+      if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) { //use target imbalance function hier
         Base::moveHypernode(max_gain_node, from_part, to_part);
 
         Base::updatePQpartState(from_part,
@@ -209,15 +213,22 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
         HEAVY_REFINEMENT_ASSERT(current_imbalance == metrics::imbalance(_hg, _context),
                V(current_imbalance) << V(metrics::imbalance(_hg, _context)));
 
-        updateNeighbours(max_gain_node, from_part, to_part); //auch wichtig, timo, gains in pq und in cache
+        updateNeighbours(max_gain_node, from_part, to_part); //maybe coonsider gains in pq und in cache
+        /** - indicates best value, C is Cost, km1 in this case. W is weight of the largest subdomain, not imbalance! i indicates the current partition, T is target weight
+         *    C^i < C-
+         * or C^i = C- && W^i < W-
+         * or T <= W^i && W^i < W-
+         */
 
-        // right now, we do not allow a decrease in cut in favor of an increase in balance
-        const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
+        const bool improved_km1 = (current_km1 < best_metrics.km1);
+        const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_imbalance < best_metrics.imbalance);
+        const bool better_balance_when_unbalanced = (current_imbalance < best_metrics.imbalance) && (current_imbalance > _context.partition.epsilon);
+       /* const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
                                                  (current_km1 < best_metrics.km1);
         const bool improved_balance_less_equal_km1 = (current_imbalance < best_metrics.imbalance) &&
-                                                     (current_km1 <= best_metrics.km1);
-        // acceptance policy vom paper reinpacken, timo
-        if (improved_km1_within_balance || improved_balance_less_equal_km1) {
+                                                     (current_km1 <= best_metrics.km1);*/
+        // acceptance policy from jostle
+        if (improved_km1 || better_balance_when_unbalanced || same_km1_better_balance) {
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
           DBGC(current_km1 < best_metrics.km1) << "KWayFM improved cut from "

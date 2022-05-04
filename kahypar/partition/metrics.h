@@ -33,6 +33,7 @@ struct Metrics {
   HyperedgeWeight cut;
   HyperedgeWeight km1;
   double imbalance;
+  HypernodeWeight heaviest_domain_weight;
 
   void updateMetric(const HyperedgeWeight value, const Mode mode, const Objective objective) {
     if (mode == Mode::direct_kway) {
@@ -51,6 +52,11 @@ struct Metrics {
       // in recursive bisection, km1 is also optimized via the cut net metric
       cut = value;
     }
+  }
+
+  void updateMetric(const HyperedgeWeight value, const Mode mode, const Objective objective, const HypernodeWeight max_domain_weight) {
+    updateMetric(value, mode, objective);
+    heaviest_domain_weight = max_domain_weight;
   }
 
   HyperedgeWeight getMetric(const Mode mode, const Objective objective) {
@@ -122,9 +128,20 @@ static inline HyperedgeWeight objective(const Hypergraph& hg, const Objective& o
     default:
       LOG << "Unknown Objective";
       exit(-1);
-  }
-}
+    }
 
+
+
+  }
+
+
+  static inline HypernodeWeight heaviest_domain_weight(const Hypergraph& hg) {
+    HypernodeWeight max_weight = hg.partWeight(0);
+    for (PartitionID id = 0; id < hg.k(); id++) {
+      max_weight = (hg.partWeight(id) > max_weight) ? hg.partWeight(id) : max_weight;
+    }
+    return max_weight;
+  }
 
 // Hide original imbalance definition that assumes Lmax0=Lmax1=Lmax
 // This definition should only be used in assertions.
