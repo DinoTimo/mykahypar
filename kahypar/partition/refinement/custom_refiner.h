@@ -87,7 +87,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _new_adjacent_part(_hg.initialNumNodes(), Hypergraph::kInvalidPartition),
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
-    _stopping_policy() { }
+    _stopping_policy(),
+    _current_step(0) { }
 
   ~CustomKWayKMinusOneRefiner() override = default;
 
@@ -119,6 +120,20 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     Base::performMovesAndUpdateCache(moves, refinement_nodes, changes);
   }
 
+  HypernodeWeight targetWeight() {
+    HypernodeWeight totalWeight = _hg.totalWeight();
+    const HypernodeWeight finalTargetWeight = (1 + _context.partition.epsilon) * (totalWeight / _hg.k());
+    const HypernodeWeight initialTargetWeight = 2 * finalTargetWeight; //rather random factor, should be dynamic TODO
+    const u_int16_t total_num_levels = _hg.initialNumNodes() - _hg.k();
+    ASSERT(_current_step < total_num_levels);
+    //linear regression, could also be another interpolation, should use other methods probably and do not perform minor analysis here
+    return initialTargetWeight - (((initialTargetWeight - finalTargetWeight) * _current_step) / total_num_levels); //maybe off by 1 error here.
+  }
+
+
+  HypernodeWeight flowDiff(PartitionID from, PartitionID to) {
+    return _hg.partWeight(from) - _hg.partWeight(to) - 1; //-1 to force at least a little improvement
+  }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
                   const std::array<HypernodeWeight, 2>&,
@@ -130,7 +145,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
     Base::reset();
     _unremovable_he_parts.reset();
-
+    _current_step++;
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -142,6 +157,10 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
     const double initial_imbalance = best_metrics.imbalance;
     double current_imbalance = best_metrics.imbalance;
+
+    const HypernodeWeight initial_heaviest_domain_weight = best_metrics.heaviest_domain_weight;
+    HypernodeWeight current_heaviest_domain_weight = metrics::heaviest_domain_weight(_hg);
+
     const HyperedgeWeight initial_km1 = best_metrics.km1;
     HyperedgeWeight current_km1 = best_metrics.km1;
 
@@ -195,7 +214,10 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
-      if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) { //use target imbalance function hier
+      const bool inbalanced_but_improves_balance = current_heaviest_domain_weight > targetWeight() && 2 * flowDiff(from_part, to_part) > _hg.nodeWeight(max_gain_node);
+      const bool balanced_and_keeps_balance = current_heaviest_domain_weight < targetWeight() && _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= targetWeight();
+      if (inbalanced_but_improves_balance || balanced_and_keeps_balance) {
+      //if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) { //use target imbalance function hier
         Base::moveHypernode(max_gain_node, from_part, to_part);
 
         Base::updatePQpartState(from_part,
@@ -204,6 +226,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_imbalance = metrics::imbalance(_hg, _context);
+        current_heaviest_domain_weight = metrics::heaviest_domain_weight(_hg);
 
         current_km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -221,8 +244,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
          */
 
         const bool improved_km1 = (current_km1 < best_metrics.km1);
-        const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_imbalance < best_metrics.imbalance);
-        const bool better_balance_when_unbalanced = (current_imbalance < best_metrics.imbalance) && (current_imbalance > _context.partition.epsilon);
+        const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_domain_weight < initial_heaviest_domain_weight);
+        const bool better_balance_when_unbalanced = (targetWeight() <= current_heaviest_domain_weight) && (current_heaviest_domain_weight < initial_heaviest_domain_weight);
        /* const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
                                                  (current_km1 < best_metrics.km1);
         const bool improved_balance_less_equal_km1 = (current_imbalance < best_metrics.imbalance) &&
@@ -981,8 +1004,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   // pins is moved to that part. For each HE e, this bitvector stores whether
   // or not a part in the connectivity set of e is unremovable.
   ds::FastResetFlagArray<> _unremovable_he_parts;
-
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
+  u_int16_t _current_step;
 };
 }  // namespace kahypar
