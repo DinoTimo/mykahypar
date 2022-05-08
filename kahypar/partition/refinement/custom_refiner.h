@@ -124,25 +124,24 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     HypernodeWeight totalWeight = _hg.totalWeight();
     const HypernodeWeight finalTargetWeight = (1 + _context.partition.epsilon) * (totalWeight / _hg.k());
     const HypernodeWeight initialTargetWeight = 2 * finalTargetWeight; //rather random factor, should be dynamic TODO
-    const u_int16_t total_num_levels = _hg.initialNumNodes() - _hg.k();
-    ASSERT(_current_step < total_num_levels);
+    const u_int16_t total_num_levels = _hg.initialNumNodes() - _hg.k() + 1;
+    ASSERT(_current_step <= total_num_levels);
     //linear regression, could also be another interpolation, should use other methods probably and do not perform minor analysis here
     return initialTargetWeight - (((initialTargetWeight - finalTargetWeight) * _current_step) / total_num_levels); //maybe off by 1 error here.
   }
 
 
   HypernodeWeight flowDiff(PartitionID from, PartitionID to) {
-    return _hg.partWeight(from) - _hg.partWeight(to) - 1; //-1 to force at least a little improvement
+    return _hg.partWeight(from) - _hg.partWeight(to);
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
                   const std::array<HypernodeWeight, 2>&,
                   const UncontractionGainChanges&,
                   Metrics& best_metrics) override final {
-    HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg), V(best_metrics.km1) << V(metrics::k3m1(_hg)));
+    HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg), V(best_metrics.km1) << V(metrics::km1(_hg)));
     HEAVY_REFINEMENT_ASSERT(FloatingPoint<double>(best_metrics.imbalance).AlmostEquals(FloatingPoint<double>(metrics::imbalance(_hg, _context))),
            V(best_metrics.imbalance) << V(metrics::imbalance(_hg, _context)));
-
     Base::reset();
     _unremovable_he_parts.reset();
     _current_step++;

@@ -84,7 +84,8 @@ class VertexPairRater {
     _tmp_ratings(_hg.initialNumNodes()),
     _already_matched(_hg.initialNumNodes()),
     _num_denied_contractions(0),
-    _num_ignores(0) { }
+    _num_ignores(0),
+    _num_contractions(0) { }
 
   VertexPairRater(const VertexPairRater&) = delete;
   VertexPairRater& operator= (const VertexPairRater&) = delete;
@@ -94,12 +95,13 @@ class VertexPairRater {
 
   ~VertexPairRater() {
     if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
-      std::cout << "Number of times max node weight ignored: " << _num_ignores << std::endl;
-      std::cout << "Number of times contraction denied because of weight: " << _num_denied_contractions << std::endl;
+      LOG << "Number of times normal contraction occured: " << _num_contractions;
+      LOG << "Number of times max node weight ignored: " << _num_ignores;
+      LOG << "Number of times contraction denied because of weight: " << _num_denied_contractions;
     }
   }
 
-  VertexPairRating rate(const HypernodeID u) {
+  VertexPairRating rate(const HypernodeID u) {    
     DBG << "Calculating rating for HN" << u;
     const HypernodeWeight weight_u = _hg.nodeWeight(u);
     for (const HyperedgeID& he : _hg.incidentEdges(u)) {
@@ -125,22 +127,21 @@ class VertexPairRater {
       penalty = penalty == 0 ? std::max(std::max(weight_u, target_weight), 1) : penalty;
       const RatingType tmp_rating = it->value / static_cast<double>(penalty);
       DBG << "r(" << u << "," << tmp_target << ")=" << tmp_rating;
-      if (_context.coarsening.rating.contract_communities == ContractCommunities::contract_communities) {
-        if ((CommunityPolicy::sameCommunity(_hg.communities(), u, tmp_target) || _hg.communitySize(_hg.communities()[u]) <= 1 || _hg.communitySize(_hg.communities()[tmp_target]) <= 1) &&
-          AcceptancePolicy::acceptRating(tmp_rating, max_rating, target, tmp_target, _already_matched) &&
+
+      if (AcceptancePolicy::acceptRating(tmp_rating, max_rating, target, tmp_target, _already_matched) &&
           FixedVertexPolicy::acceptContraction(_hg, _context, u, tmp_target)) {
+        if (CommunityPolicy::sameCommunity(_hg.communities(), u, tmp_target)) {
           max_rating = tmp_rating;
           target = tmp_target;
+          DBG << "In same community";
+        } else if (_context.coarsening.rating.contract_communities == ContractCommunities::contract_communities &&
+                   _hg.communitySize(_hg.communities()[u]) <= 1 && _hg.communitySize(_hg.communities()[tmp_target]) <= 1) {
+          max_rating = tmp_rating;
+          target = tmp_target;
+          DBG << "community of size 1";
         }
-      } else {
-        if (CommunityPolicy::sameCommunity(_hg.communities(), u, tmp_target) &&
-          AcceptancePolicy::acceptRating(tmp_rating, max_rating, target, tmp_target, _already_matched) &&
-          FixedVertexPolicy::acceptContraction(_hg, _context, u, tmp_target)) {
-        max_rating = tmp_rating;
-        target = tmp_target;
-        }
-      }      
-    }
+      }   
+    } 
 
     VertexPairRating ret;
     if (max_rating != std::numeric_limits<RatingType>::min()) {
@@ -172,6 +173,7 @@ class VertexPairRater {
   bool belowThresholdNodeWeight(const HypernodeWeight weight_u,
                                 const HypernodeWeight weight_v) {
     if (weight_v + weight_u <= _context.coarsening.max_allowed_node_weight) {
+      _num_contractions++;
       return true;
     } else {
       if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
@@ -190,6 +192,7 @@ class VertexPairRater {
   ds::FastResetFlagArray<> _already_matched;
   u_int16_t _num_denied_contractions;
   u_int16_t _num_ignores;
+  u_int16_t _num_contractions;
   
 };
 }  // namespace kahypar

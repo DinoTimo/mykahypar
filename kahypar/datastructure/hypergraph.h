@@ -625,7 +625,7 @@ class GenericHypergraph {
     _hyperedges(_num_hyperedges, Hyperedge(0, 0, 1)),
     _incidence_array(_num_pins, 0),
     _communities(_num_hypernodes, 0),
-    _community_sizes(_num_hypernodes, 0),
+    _community_sizes(_num_hypernodes), //we dont know that amount of communities at that point
     _fixed_vertices(nullptr),
     _fixed_vertex_part_id(),
     _part_info(_k),
@@ -924,8 +924,7 @@ class GenericHypergraph {
 
     DBG << "contracting (" << u << "," << v << ")";
 
-    _community_sizes[v]--;
-
+    _community_sizes[_communities[v]]--;
     hypernode(u).setWeight(hypernode(u).weight() + hypernode(v).weight());
     if (isFixedVertex(u)) {
       if (!isFixedVertex(v)) {
@@ -1093,7 +1092,7 @@ class GenericHypergraph {
   void uncontract(const Memento& memento) {
     ASSERT(!hypernode(memento.u).isDisabled(), "Hypernode" << memento.u << "is disabled");
     ASSERT(hypernode(memento.v).isDisabled(), "Hypernode" << memento.v << "is not invalid");
-
+    _community_sizes[_communities[memento.v]]++;
     restoreMemento(memento);
     markIncidentNetsOf(memento.v);
 
@@ -1781,9 +1780,21 @@ class GenericHypergraph {
   }
 
   void countCommunitySizes() {
-    ASSERT(_communities.size() == _current_num_hypernodes);
+    PartitionID largestCommunityID = 0;
+    for (const PartitionID comm : _communities) {
+      largestCommunityID = (comm > largestCommunityID) ? comm : largestCommunityID;
+    } //this probably can be done quicker
+    DBG << "Largest CommunityID is: " << largestCommunityID;
+    DBG << "Amount of communities is: " << _communities.size();
+    if (largestCommunityID < 0 ) {
+      DBG << "WTF";
+    }
+    if (static_cast<long unsigned int>(largestCommunityID) >  _communities.size()) {
+      DBG << std::string(_communities.begin(), _communities.end());
+    }
+    _community_sizes = std::vector<PartitionID>(largestCommunityID + 1, 0);
     for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
-      _community_sizes[hn]++;
+      _community_sizes[_communities[hn]]++;
     }
   }
 
