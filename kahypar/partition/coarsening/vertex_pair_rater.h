@@ -175,14 +175,13 @@ class VertexPairRater {
     if (weight_v + weight_u <= _context.coarsening.max_allowed_node_weight) {
       _num_contractions++;
       return true;
+    } else if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
+      _num_ignores++;
+      return true;
     } else {
-      if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
-        _num_ignores++;
-        return true;
-      }
+      _num_denied_contractions++;
+      return false;
     }
-    _num_denied_contractions++;
-    return false;
       
   }
 

@@ -1783,14 +1783,6 @@ class GenericHypergraph {
     PartitionID largestCommunityID = 0;
     for (const PartitionID comm : _communities) {
       largestCommunityID = (comm > largestCommunityID) ? comm : largestCommunityID;
-    } //this probably can be done quicker
-    DBG << "Largest CommunityID is: " << largestCommunityID;
-    DBG << "Amount of communities is: " << _communities.size();
-    if (largestCommunityID < 0 ) {
-      DBG << "WTF";
-    }
-    if (static_cast<long unsigned int>(largestCommunityID) >  _communities.size()) {
-      DBG << std::string(_communities.begin(), _communities.end());
     }
     _community_sizes = std::vector<PartitionID>(largestCommunityID + 1, 0);
     for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
