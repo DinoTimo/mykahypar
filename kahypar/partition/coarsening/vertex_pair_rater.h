@@ -135,7 +135,7 @@ class VertexPairRater {
           target = tmp_target;
           DBG << "In same community";
         } else if (_context.coarsening.rating.contract_communities == ContractCommunities::contract_communities &&
-                   _hg.communitySize(_hg.communities()[u]) <= 1 && _hg.communitySize(_hg.communities()[tmp_target]) <= 1) {
+                   _hg.communitySizes()[_hg.communities()[u]] <= 1 && _hg.communitySizes()[_hg.communities()[tmp_target]] <= 1) {
           max_rating = tmp_rating;
           target = tmp_target;
           DBG << "community of size 1";

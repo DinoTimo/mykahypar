@@ -1503,8 +1503,8 @@ class GenericHypergraph {
     return hypernode(u).weight();
   }
 
-  HypernodeWeight communitySize(const PartitionID p) const {
-    return _community_sizes[p];
+  const std::vector<HypernodeWeight> & communitySizes() const {
+    return _community_sizes;
   }
 
   void setNodeWeight(const HypernodeID u, const HypernodeWeight weight) {
@@ -1844,6 +1844,7 @@ class GenericHypergraph {
   FRIEND_TEST(AHypergraphMacro, IteratesOverAllPinsOfAHyperedge);
   FRIEND_TEST(AContractionMemento, StoresOldStateOfInvolvedHypernodes);
   FRIEND_TEST(AnUncontractionOperation, DeletesIncidenceInfoAddedDuringContraction);
+  FRIEND_TEST(APartitionedHypergraph, CountsCommunitySizesCorrectly);
   FRIEND_TEST(AHypergraph, InvalidatesPartitionPinCountsOnHyperedgeRemoval);
   FRIEND_TEST(AHypergraph, CalculatesPinCountsOfAHyperedge);
   FRIEND_TEST(APartitionedHypergraph, StoresPartitionPinCountsForHyperedges);

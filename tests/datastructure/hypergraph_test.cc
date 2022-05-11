@@ -27,15 +27,74 @@
 #include "kahypar/definitions.h"
 #include "kahypar/partition/coarsening/coarsening_memento.h"
 #include "kahypar/partition/coarsening/hypergraph_pruner.h"
+#include "kahypar/partition/preprocessing/louvain.h"
 #include "tests/datastructure/hypergraph_test_fixtures.h"
+#include "kahypar/partition/context.h"
 
 using ::testing::Eq;
+using ::testing::Ne;
 using ::testing::ContainerEq;
 using ::testing::Test;
 
 namespace kahypar {
 namespace ds {
 using Memento = Hypergraph::ContractionMemento;
+
+TEST_F(APartitionedHypergraph, CountsCommunitySizesCorrectly) {
+
+  //I kinda assume, that community 0 is the community of all the nodes that are not put into a community, thats why i try to ingore community 0.
+  for (const PartitionID& community : hypergraph.communities()) {
+    ASSERT_THAT(hypergraph.communitySizes()[community], Eq(0));
+  }
+  Context context;
+  /*
+  p-detect-communities=true
+p-detect-communities-in-ip=false
+p-reuse-communities=true
+p-max-louvain-pass-iterations=100
+p-min-eps-improvement=0.0001
+p-louvain-edge-weight=hybrid*/
+  context.preprocessing.enable_community_detection = true;
+  context.preprocessing.community_detection.enable_in_initial_partitioning = false;
+  context.preprocessing.community_detection.reuse_communities = true;
+  context.preprocessing.community_detection.max_pass_iterations = 100;
+  context.preprocessing.community_detection.min_eps_improvement= 0.0001;
+  context.preprocessing.community_detection.edge_weight = LouvainEdgeWeight::degree;
+
+  detectCommunities(hypergraph, context);
+
+  HypernodeID u = 0;
+  for (; u < hypergraph._num_hypernodes; u++) {
+    if (hypergraph.communities()[u] != 0) {
+      break;
+    }
+  }
+  
+  HypernodeID v = u + 1;
+  for (; v < hypergraph._num_hypernodes; v++) {
+    if (hypergraph.communities()[v] != hypergraph.communities()[u] && hypergraph.communities()[v] != 0) {
+      break;
+    }
+  }
+  PartitionID commU = hypergraph.communities()[u];
+  PartitionID commV = hypergraph.communities()[v];
+  ASSERT_THAT(commU, Ne(commV));
+
+  LOG << "num communities = " << std::to_string(hypergraph._community_sizes.size());
+  PartitionID prevCommSizeU = hypergraph.communitySizes()[commU];
+  PartitionID prevCommSizeV = hypergraph.communitySizes()[commV];
+
+  hypergraph.contract(u, v);
+  LOG << "Contraction done";
+  ASSERT_THAT(hypergraph.communitySizes()[commU], Eq(prevCommSizeU));
+  ASSERT_THAT(hypergraph.communitySizes()[commV], Eq(prevCommSizeV - 1));
+
+  hypergraph.uncontract(Memento {u, v});
+
+  ASSERT_THAT(hypergraph.communitySizes()[commU], Eq(prevCommSizeU));
+  ASSERT_THAT(hypergraph.communitySizes()[commV], Eq(prevCommSizeV));
+}
+
 TEST_F(AHypergraph, InitializesInternalHypergraphRepresentation) {
   ASSERT_THAT(hypergraph.currentNumNodes(), Eq(7));
   ASSERT_THAT(hypergraph.currentNumEdges(), Eq(4));
