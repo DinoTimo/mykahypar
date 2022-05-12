@@ -623,7 +623,7 @@ class GenericHypergraph {
     _hyperedges(_num_hyperedges, Hyperedge(0, 0, 1)),
     _incidence_array(_num_pins, 0),
     _communities(_num_hypernodes, 0),
-    _community_sizes(1, 0), //we dont know the number of communities at that point
+    _community_sizes(), //we dont know the number of communities at that point
     _fixed_vertices(nullptr),
     _fixed_vertex_part_id(),
     _part_info(_k),
@@ -1869,9 +1869,9 @@ class GenericHypergraph {
   void countCommunitySizes() {
     PartitionID largestCommunityID = 0;
     for (const PartitionID comm : _communities) {
-      largestCommunityID = (comm > largestCommunityID) ? comm : largestCommunityID;
+      largestCommunityID = std::max(comm, largestCommunityID);
     }
-    _community_sizes.resize(largestCommunityID, 0);
+    _community_sizes = std::vector<HypernodeWeight>(largestCommunityID + 1, 0); //TODO: i dont know if this '+ 1' is necessary
     for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
       _community_sizes[_communities[hn]]++;
     }
