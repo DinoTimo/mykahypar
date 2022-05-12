@@ -531,8 +531,6 @@ class GenericHypergraph {
   using IncidenceIterator = typename std::vector<VertexID>::const_iterator;
   // ! Iterator to iterator over the hypernodes
   using HypernodeIterator = HypergraphElementIterator<const Hypernode>;
-  // ! Iterator to iterate over community sizes
-  using CommunitySizeIterator = HypergraphElementIterator<const HypernodeWeight>;
   // ! Iterator to iterator over the hyperedges
   using HyperedgeIterator = HypergraphElementIterator<const Hyperedge>;
 
@@ -625,7 +623,7 @@ class GenericHypergraph {
     _hyperedges(_num_hyperedges, Hyperedge(0, 0, 1)),
     _incidence_array(_num_pins, 0),
     _communities(_num_hypernodes, 0),
-    _community_sizes(_num_hypernodes), //we dont know that amount of communities at that point
+    _community_sizes(1, 0), //we dont know the number of communities at that point
     _fixed_vertices(nullptr),
     _fixed_vertex_part_id(),
     _part_info(_k),
@@ -923,8 +921,13 @@ class GenericHypergraph {
            "Hypernode " << v << " is a fixed vertex and have to be the representive of the contraction");
 
     DBG << "contracting (" << u << "," << v << ")";
-
-    _community_sizes[_communities[v]]--;
+    
+    // This is highly suboptimal. Both performance wise - as this is an if condition in an often called method
+    // and design wise, as now the hypergraph tracks an attribute actually belonging to the context.
+    // At least the if condition can be calculated in O(1)...
+    if (!_community_sizes.empty()) { 
+      _community_sizes[_communities[v]]--;
+    }
     hypernode(u).setWeight(hypernode(u).weight() + hypernode(v).weight());
     if (isFixedVertex(u)) {
       if (!isFixedVertex(v)) {
@@ -1092,7 +1095,9 @@ class GenericHypergraph {
   void uncontract(const Memento& memento) {
     ASSERT(!hypernode(memento.u).isDisabled(), "Hypernode" << memento.u << "is disabled");
     ASSERT(hypernode(memento.v).isDisabled(), "Hypernode" << memento.v << "is not invalid");
-    _community_sizes[_communities[memento.v]]++;
+    if (!_community_sizes.empty()) { 
+      _community_sizes[_communities[memento.v]]++;
+    }
     restoreMemento(memento);
     markIncidentNetsOf(memento.v);
 
@@ -1435,7 +1440,7 @@ class GenericHypergraph {
   // ! Resets the hypergraph to initial state after construction
   void reset() {
     resetPartitioning();
-    std::fill(_communities.begin(), _communities.end(), 0);
+    resetCommunities();
     for (HyperedgeID i = 0; i < _num_hyperedges; ++i) {
       hyperedge(i).hash = kEdgeHashSeed;
       // not using pins(i) because it contains an assertion for hyperedge validity
@@ -1777,21 +1782,12 @@ class GenericHypergraph {
   void setCommunities(std::vector<PartitionID>&& communities) {
     ASSERT(communities.size() == _current_num_hypernodes);
     _communities = std::move(communities);
-  }
-
-  void countCommunitySizes() {
-    PartitionID largestCommunityID = 0;
-    for (const PartitionID comm : _communities) {
-      largestCommunityID = (comm > largestCommunityID) ? comm : largestCommunityID;
-    }
-    _community_sizes = std::vector<PartitionID>(largestCommunityID + 1, 0);
-    for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
-      _community_sizes[_communities[hn]]++;
-    }
+    countCommunitySizes();
   }
 
   void resetCommunities() {
     std::fill(_communities.begin(), _communities.end(), 0);
+    std::fill(_community_sizes.begin(), _community_sizes.end(), 0);
   }
 
   void resetEdgeHashes() {
@@ -1870,6 +1866,16 @@ class GenericHypergraph {
     return false;
   }
 
+  void countCommunitySizes() {
+    PartitionID largestCommunityID = 0;
+    for (const PartitionID comm : _communities) {
+      largestCommunityID = (comm > largestCommunityID) ? comm : largestCommunityID;
+    }
+    _community_sizes.resize(largestCommunityID, 0);
+    for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
+      _community_sizes[_communities[hn]]++;
+    }
+  }
 
   /*!
    * Returns the number of incident hyperedges of a hypernode that connect more than on block.
@@ -2162,7 +2168,6 @@ class GenericHypergraph {
   // ! Stores current community sizes, not weights! Only counting the number of vertices not, their weights.
   // ! Is updated with each contraction
   std::vector<HypernodeWeight> _community_sizes;
-
   // ! Stores fixed vertices
   std::unique_ptr<SparseSet<HypernodeID> > _fixed_vertices;
   // ! Stores fixed vertex part ids

@@ -291,6 +291,5 @@ inline std::vector<ClusterID> detectCommunities(const Hypergraph& hypergraph,
 
 inline void detectCommunities(Hypergraph& hypergraph, const Context& context) {
   hypergraph.setCommunities(internal::detectCommunities(hypergraph, context));
-  hypergraph.countCommunitySizes();
 }
 }  // namespace kahypar
