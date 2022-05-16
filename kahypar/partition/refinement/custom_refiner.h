@@ -121,53 +121,39 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     Base::performMovesAndUpdateCache(moves, refinement_nodes, changes);
   }
 
-  HypernodeWeight targetWeight() {
-    HypernodeWeight totalWeight = _hg.totalWeight();
-    const HypernodeWeight finalTargetWeight = (1 + _context.partition.epsilon) * (totalWeight / _hg.k());
-    const HypernodeWeight initialTargetWeight = 2 * finalTargetWeight; //rather random factor, should be dynamic TODO
-    const u_int16_t total_num_levels = _hg.initialNumNodes() - _hg.k() + 1;
-    ASSERT(_current_step <= total_num_levels);
-    //linear regression, could also be another interpolation, should use other methods probably and do not perform minor analysis here
-    return initialTargetWeight - (((initialTargetWeight - finalTargetWeight) * _current_step) / total_num_levels); //maybe off by 1 error here.
+  HypernodeWeight currentUpperBlockWeightBound() {
+    return idealBlockWeight() + currentBlockWeightDelta();
   }
 
- /* std::vector<PartitionID> calculateCapacityMatrix() {
-    PartitionID k = _context.partition.k;
-    PartitionID source = k;
-    PartitionID sink = k + 1;
-    std::vector<PartitionID> capacity_matrix((k + 2) * (k + 2));
-    QuotientGraphBlockScheduler scheduler(_hg, _context);
-    scheduler.buildQuotientGraph();
-    for (PartitionID first = 0; first < k; first++) {
-      for (PartitionID second = 0; second < k; second++) {
-        if (first == second) {
-          capacity_matrix[first * k + second] = calculateQuotientNodeCapacity(first);
-        } else {
-          capacity_matrix[first * k + second] = calculateQuotientEdgeCapacity(first, second);
-        }
-      }
+  HypernodeWeight currentLowerBlockWeightBound() {
+    return idealBlockWeight() - currentBlockWeightDelta();
+  }
+
+  HypernodeWeight currentBlockWeightDelta() {
+    uint16_t k = _context.partition.k;
+    uint16_t current_step = _hg.currentNumNodes() - k;
+    uint16_t total_num_steps = _hg.initialNumNodes() - k;
+    return idealBlockWeight()
+      * _context.partition.epsilon 
+      * (current_step / total_num_steps);
+  }
+
+  HypernodeWeight idealBlockWeight() {
+    return _hg.totalWeight() / _context.partition.k;
+  }
+
+  HypernodeWeight moveFeasibilityByFlow(PartitionID from, PartitionID to) {
+    HypernodeWeight upperBound = currentUpperBlockWeightBound();
+    HypernodeWeight lowerBound = currentLowerBlockWeightBound();
+    HypernodeWeight fromWeight = _hg.partWeight(from);
+    HypernodeWeight toWeight = _hg.partWeight(to);
+    if (fromWeight > lowerBound && toWeight < upperBound) {
+      return fromWeight - toWeight;
     }
-    // Add edges between source and overloaded blocks
-    for (PartitionID pseudoSource = 0; pseudoSource < k; pseudoSource++) {
-      if (isOverloadedBlock(pseudoSource)) {
-        capacity_matrix[source * k + pseudoSource] = std::numeric_limits<PartitionID>::max();
-      } else {
-        
-      }
+    if (toWeight < lowerBound && fromWeight > toWeight) {
+      return fromWeight - toWeight;
     }
-    // Add edges between underloarded blocks and sink
-    for (PartitionID pseudoSink = 0; pseudoSink < k; pseudoSink++) {
-      capacity_matrix[pseudoSink * k + sink] = std::numeric_limits<PartitionID>::max();
-    }
-    
-
-
-    return capacity_matrix;
-  }*/
-
-
-  HypernodeWeight moveFeasibleByFlow(PartitionID from, PartitionID to) {
-    return _hg.partWeight(from) - _hg.partWeight(to);
+    return 0;
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -245,15 +231,19 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
+      HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
       /**
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
-      const bool inbalanced_but_improves_balance = current_heaviest_block_weight > targetWeight() && 2 * moveFeasibleByFlow(from_part, to_part) > _hg.nodeWeight(max_gain_node);
-      const bool balanced_and_keeps_balance = current_heaviest_block_weight < targetWeight() && _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= targetWeight();
+      const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
+                                      2 * moveFeasibilityByFlow(from_part, to_part) > _hg.nodeWeight(max_gain_node);
+      const bool balanced_and_keeps_balance = current_heaviest_block_weight < currentUpperBound &&
+                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
       
-      if (inbalanced_but_improves_balance || balanced_and_keeps_balance) {
+      if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
+        
         Base::moveHypernode(max_gain_node, from_part, to_part);
         //update flow?
         Base::updatePQpartState(from_part,
@@ -281,13 +271,14 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
         const bool improved_km1 = (current_km1 < best_metrics.km1);
         const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
-        const bool better_balance_when_unbalanced = (targetWeight() <= current_heaviest_block_weight) && (current_heaviest_block_weight < initial_heaviest_block_weight);
+        const bool better_balance_when_unbalanced = (currentUpperBound <= current_heaviest_block_weight) && (current_heaviest_block_weight < initial_heaviest_block_weight);
        /* const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
                                                  (current_km1 < best_metrics.km1);
         const bool improved_balance_less_equal_km1 = (current_imbalance < best_metrics.imbalance) &&
                                                      (current_km1 <= best_metrics.km1);*/
         // acceptance policy from jostle
         if (improved_km1 || better_balance_when_unbalanced || same_km1_better_balance) {
+
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
           DBGC(current_km1 < best_metrics.km1) << "KWayFM improved cut from "
