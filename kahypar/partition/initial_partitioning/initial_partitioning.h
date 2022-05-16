@@ -30,3 +30,4 @@
 #include "kahypar/partition/initial_partitioning/pool_initial_partitioner.h"
 #include "kahypar/partition/initial_partitioning/random_initial_partitioner.h"
 #include "kahypar/partition/initial_partitioning/bin_packing_initial_partitioner.h"
+#include "kahypar/partition/initial_partitioning/direct_k_initial_partitioner.h"

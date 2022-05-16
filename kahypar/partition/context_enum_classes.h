@@ -127,6 +127,7 @@ enum class InitialPartitionerAlgorithm : uint8_t {
   lp,
   bin_packing,
   pool,
+  direct_k,
   UNDEFINED
 };
 
@@ -398,6 +399,7 @@ static std::ostream& operator<< (std::ostream& os, const InitialPartitionerAlgor
     case InitialPartitionerAlgorithm::random: return os << "random";
     case InitialPartitionerAlgorithm::lp: return os << "lp";
     case InitialPartitionerAlgorithm::bin_packing: return os << "bin_packing";
+    case InitialPartitionerAlgorithm::direct_k: return os << "direct_k";
     case InitialPartitionerAlgorithm::pool: return os << "pool";
     case InitialPartitionerAlgorithm::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
@@ -638,6 +640,8 @@ static InitialPartitionerAlgorithm initialPartitioningAlgorithmFromString(const 
     return InitialPartitionerAlgorithm::pool;
   } else if (mode == "bin_packing") {
     return InitialPartitionerAlgorithm::bin_packing;
+  } else if (mode == "direct_k") {
+    return InitialPartitionerAlgorithm::direct_k;
   }
   LOG << "Illegal option:" << mode;
   exit(0);
