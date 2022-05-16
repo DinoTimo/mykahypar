@@ -88,9 +88,7 @@ class FlowSolver {
     
  
 
-    Flow flow(const Node start, const Node end) const {
-      return _output_flow_adjacency_matrix[start * _num_nodes + end];
-    }
+    
 
     void init(const std::vector<Capacity> input, const Node source, const Node sink) {
       _input_capacity_adjacency_matrix = move(input);
@@ -136,6 +134,10 @@ class FlowSolver {
         total += flow(e);
       }
       return total;
+    }
+
+    Flow flow(const Node start, const Node end) const {
+      return _output_flow_adjacency_matrix[start * _num_nodes + end];
     }
 
     std::vector<Capacity> solveFlow(const std::vector<Capacity> input, const Node source, const Node sink, const bool respect_Node_Capacity) {

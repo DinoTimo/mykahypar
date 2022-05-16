@@ -89,7 +89,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
-    _current_step(0) { }
+    _flow_solver() { }
 
   ~CustomKWayKMinusOneRefiner() override = default;
 
@@ -141,19 +141,53 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   HypernodeWeight idealBlockWeight() {
     return _hg.totalWeight() / _context.partition.k;
   }
+  
+  std::vector<PartitionID> calculateCapacityMatrix() {
+    PartitionID k = _context.partition.k;
+    PartitionID source = k;
+    PartitionID sink = k + 1;
+    std::vector<HypernodeWeight> capacity_matrix((k + 2) * (k + 2), 0);
+    QuotientGraphBlockScheduler scheduler(_hg, _context);
+    scheduler.buildQuotientGraph();
+    for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
+      capacity_matrix[edge.first * (k + 2) + edge.second] = calculateQuotientEdgeCapacity(edge.first, edge.second);
+    }
+
+    for (PartitionID node = 0; node < k; node++) {
+      capacity_matrix[node * k + node] = calculateQuotientNodeCapacity(node);
+    }
+    
+    // Add edges between source and overloaded blocks and sink and underloaded blocks
+    for (PartitionID pseudoSource = 0; pseudoSource < k; pseudoSource++) {
+      if (isOverloadedBlock(pseudoSource)) {
+        capacity_matrix[source * (k + 2) + pseudoSource] = std::numeric_limits<PartitionID>::max();
+      }
+      if (isUnderloadedBlock(pseudoSource)) {
+        capacity_matrix[pseudoSource * (k + 2) + sink] = std::numeric_limits<PartitionID>::max();
+      }
+      //This method here does not explicitly forbid nodes to be considered both over- and underloaded!!
+    }
+    return capacity_matrix;
+  }
+
+  HypernodeWeight calculateQuotientNodeCapacity(PartitionID quotientNode) {
+    return _hg.partWeight(quotientNode);
+  }
+
+  HypernodeWeight calculateQuotientEdgeCapacity(PartitionID first, PartitionID second) {
+    return std::min(calculateQuotientNodeCapacity(first), calculateQuotientNodeCapacity(second));
+  }
+  
+  bool isOverloadedBlock(PartitionID block) {
+    return _hg.partWeight(block) > idealBlockWeight();
+  }
+
+  bool isUnderloadedBlock(PartitionID block) {
+    return _hg.partWeight(block) < idealBlockWeight();
+  }
 
   HypernodeWeight moveFeasibilityByFlow(PartitionID from, PartitionID to) {
-    HypernodeWeight upperBound = currentUpperBlockWeightBound();
-    HypernodeWeight lowerBound = currentLowerBlockWeightBound();
-    HypernodeWeight fromWeight = _hg.partWeight(from);
-    HypernodeWeight toWeight = _hg.partWeight(to);
-    if (fromWeight > lowerBound && toWeight < upperBound) {
-      return fromWeight - toWeight;
-    }
-    if (toWeight < lowerBound && fromWeight > toWeight) {
-      return fromWeight - toWeight;
-    }
-    return 0;
+    return _flow_solver.flow(from, to);
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -165,7 +199,6 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
            V(best_metrics.imbalance) << V(metrics::imbalance(_hg, _context)));
     Base::reset();
     _unremovable_he_parts.reset();
-    _current_step++;
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -190,6 +223,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
+      _flow_solver.solveFlow(calculateCapacityMatrix(), _context.partition.k, _context.partition.k + 1, true);
 
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
@@ -1035,6 +1069,6 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   ds::FastResetFlagArray<> _unremovable_he_parts;
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
-  u_int16_t _current_step;
+  FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
 };
 }  // namespace kahypar
