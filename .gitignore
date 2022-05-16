@@ -25,3 +25,4 @@ profile/*
 external_tools/*
 !external_tools/primes
 .idea*
+.vscode*
