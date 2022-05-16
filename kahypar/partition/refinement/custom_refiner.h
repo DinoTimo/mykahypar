@@ -38,6 +38,7 @@
 #include "kahypar/meta/template_parameter_to_string.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
+#include "kahypar/partition/refinement/flow/graph_flow_solver.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
@@ -130,8 +131,42 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     return initialTargetWeight - (((initialTargetWeight - finalTargetWeight) * _current_step) / total_num_levels); //maybe off by 1 error here.
   }
 
+ /* std::vector<PartitionID> calculateCapacityMatrix() {
+    PartitionID k = _context.partition.k;
+    PartitionID source = k;
+    PartitionID sink = k + 1;
+    std::vector<PartitionID> capacity_matrix((k + 2) * (k + 2));
+    QuotientGraphBlockScheduler scheduler(_hg, _context);
+    scheduler.buildQuotientGraph();
+    for (PartitionID first = 0; first < k; first++) {
+      for (PartitionID second = 0; second < k; second++) {
+        if (first == second) {
+          capacity_matrix[first * k + second] = calculateQuotientNodeCapacity(first);
+        } else {
+          capacity_matrix[first * k + second] = calculateQuotientEdgeCapacity(first, second);
+        }
+      }
+    }
+    // Add edges between source and overloaded blocks
+    for (PartitionID pseudoSource = 0; pseudoSource < k; pseudoSource++) {
+      if (isOverloadedBlock(pseudoSource)) {
+        capacity_matrix[source * k + pseudoSource] = std::numeric_limits<PartitionID>::max();
+      } else {
+        
+      }
+    }
+    // Add edges between underloarded blocks and sink
+    for (PartitionID pseudoSink = 0; pseudoSink < k; pseudoSink++) {
+      capacity_matrix[pseudoSink * k + sink] = std::numeric_limits<PartitionID>::max();
+    }
+    
 
-  HypernodeWeight flowDiff(PartitionID from, PartitionID to) {
+
+    return capacity_matrix;
+  }*/
+
+
+  HypernodeWeight moveFeasibleByFlow(PartitionID from, PartitionID to) {
     return _hg.partWeight(from) - _hg.partWeight(to);
   }
 
@@ -157,8 +192,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     const double initial_imbalance = best_metrics.imbalance;
     double current_imbalance = best_metrics.imbalance;
 
-    const HypernodeWeight initial_heaviest_domain_weight = best_metrics.heaviest_domain_weight;
-    HypernodeWeight current_heaviest_domain_weight = metrics::heaviest_domain_weight(_hg);
+    const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_domain_weight;
+    HypernodeWeight current_heaviest_block_weight = metrics::heaviest_domain_weight(_hg);
 
     const HyperedgeWeight initial_km1 = best_metrics.km1;
     HyperedgeWeight current_km1 = best_metrics.km1;
@@ -168,6 +203,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _stopping_policy.resetStatistics();
 
     const double beta = log(_hg.currentNumNodes());
+
+
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
                                                               current_km1)) {
@@ -213,19 +250,19 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
-      const bool inbalanced_but_improves_balance = current_heaviest_domain_weight > targetWeight() && 2 * flowDiff(from_part, to_part) > _hg.nodeWeight(max_gain_node);
-      const bool balanced_and_keeps_balance = current_heaviest_domain_weight < targetWeight() && _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= targetWeight();
+      const bool inbalanced_but_improves_balance = current_heaviest_block_weight > targetWeight() && 2 * moveFeasibleByFlow(from_part, to_part) > _hg.nodeWeight(max_gain_node);
+      const bool balanced_and_keeps_balance = current_heaviest_block_weight < targetWeight() && _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= targetWeight();
+      
       if (inbalanced_but_improves_balance || balanced_and_keeps_balance) {
-      //if (Base::moveIsFeasible(max_gain_node, from_part, to_part)) { //use target imbalance function hier
         Base::moveHypernode(max_gain_node, from_part, to_part);
-
+        //update flow?
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],
                                 _context.partition.max_part_weights[to_part]);
 
         current_imbalance = metrics::imbalance(_hg, _context);
-        current_heaviest_domain_weight = metrics::heaviest_domain_weight(_hg);
+        current_heaviest_block_weight = metrics::heaviest_domain_weight(_hg);
 
         current_km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -243,8 +280,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
          */
 
         const bool improved_km1 = (current_km1 < best_metrics.km1);
-        const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_domain_weight < initial_heaviest_domain_weight);
-        const bool better_balance_when_unbalanced = (targetWeight() <= current_heaviest_domain_weight) && (current_heaviest_domain_weight < initial_heaviest_domain_weight);
+        const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
+        const bool better_balance_when_unbalanced = (targetWeight() <= current_heaviest_block_weight) && (current_heaviest_block_weight < initial_heaviest_block_weight);
        /* const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
                                                  (current_km1 < best_metrics.km1);
         const bool improved_balance_less_equal_km1 = (current_imbalance < best_metrics.imbalance) &&
@@ -746,7 +783,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
                     LOG << "gain=" << gainInducedByHypergraph(pin, part);
                     LOG << "from_part=" << _hg.partID(pin);
                     LOG << "to_part=" << part;
-                    LOG << "would be feasible=" << Base::moveIsFeasible(pin, _hg.partID(pin), part);
+                    LOG << "would be feasible by old feasibility check=" << Base::moveIsFeasible(pin, _hg.partID(pin), part);
+                    //TODO add actual feasibility
                     _hg.printNodeState(pin);
                     for (const HyperedgeID& incident_edge : _hg.incidentEdges(pin)) {
                       for (PartitionID i = 0; i < _context.partition.k; ++i) {
@@ -787,7 +825,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
                 LOG << "gain in PQ=" << _pq.key(pin, part);
                 LOG << "from_part=" << _hg.partID(pin);
                 LOG << "to_part=" << part;
-                LOG << "would be feasible=" << Base::moveIsFeasible(pin, _hg.partID(pin), part);
+                LOG << "would be feasible by old feasibility check=" << Base::moveIsFeasible(pin, _hg.partID(pin), part);
+                //TODO add actual feasibility
                 LOG << "current HN" << moved_hn << "was moved from" << from_part << "to"
                     << to_part;
                 return false;
