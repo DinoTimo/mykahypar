@@ -216,7 +216,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
     const HyperedgeWeight initial_km1 = best_metrics.km1;
     HyperedgeWeight current_km1 = best_metrics.km1;
-
+  
     int min_cut_index = -1;
     int touched_hns_since_last_improvement = 0;
     _stopping_policy.resetStatistics();
