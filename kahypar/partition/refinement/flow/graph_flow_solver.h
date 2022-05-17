@@ -38,7 +38,6 @@ class FlowSolver {
     Node _source;
     Node _sink;
     int _num_nodes;
-    Flow _total_flow;
 
     void setFlow(const Edge e, const Flow flow) {
       setFlow(e.start, e.end, flow);
@@ -82,13 +81,9 @@ class FlowSolver {
       return _input_capacity_adjacency_matrix[u * _num_nodes + v];
     }
 
-        Flow flow(const Edge e) const {
+    Flow flow(const Edge e) const {
       return flow(e.start, e.end);
     }
-    
- 
-
-    
 
     void init(const std::vector<Capacity> input, const Node source, const Node sink) {
       _input_capacity_adjacency_matrix = move(input);
@@ -106,7 +101,6 @@ class FlowSolver {
       }
       _queue = std::vector<Node>();
       //maybe reserve some space for the _queue? log n?
-      _total_flow = 0;
       _source = source;
       _sink = sink;
     } 
@@ -119,8 +113,7 @@ class FlowSolver {
     _queue(),
     _source(0),
     _sink(0),
-    _num_nodes(0),
-    _total_flow(0) { }
+    _num_nodes(0) { }
 
     FlowSolver(const FlowSolver&) = delete;
     FlowSolver(FlowSolver&&) = delete;
@@ -129,11 +122,7 @@ class FlowSolver {
 
     //this should be private and shared to test classes via Friend_test TODO
     Flow flow(const Node v) const {
-      Flow total = 0;
-      for (const Edge e : getOutgoingEdgesOf(v)) {
-        total += flow(e);
-      }
-      return total;
+      return flow(v, v);
     }
 
     Flow flow(const Node start, const Node end) const {
@@ -173,13 +162,12 @@ class FlowSolver {
           DBG << "found flow of size " << std::to_string(cur_flow) << " and of length " << std::to_string(pathLen);
           for (Edge e = _pred[_sink]; e != _invalid_edge; e = _pred[e.start]) {
             setFlow(e, flow(e) + cur_flow);
-            setFlow(reverseEdge(e), flow(e) - cur_flow);
+            setFlow(reverseEdge(e), flow(reverseEdge(e)) - cur_flow);
+            setFlow(e.start, flow(e.start) + cur_flow);
           }
           DBG << "flow updated\n";
-          _total_flow += cur_flow;
         }
       } while (_pred[_sink] != _invalid_edge);
-      DBG << "total flow is = " << std::to_string(_total_flow);
       DBG << "input flow at target is = " << std::to_string(flow(sink)) << " and at source is = " << std::to_string(flow(source));
       return _output_flow_adjacency_matrix;
     }
