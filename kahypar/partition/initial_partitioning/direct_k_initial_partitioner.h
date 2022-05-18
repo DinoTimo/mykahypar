@@ -2,11 +2,9 @@
 
 #include "kahypar/partition/initial_partitioning/i_initial_partitioner.h"
 #include "kahypar/partition/initial_partitioning/initial_partitioner_base.h"
+#include "kahypar/datastructure/kway_priority_queue.h"
 
 namespace kahypar {
-/* ! This class should only ever used, when the graph is contracted down to k vertices during coarsening.
-   ! This class can be used with "i-algo=direct_k"
-*/
 class DirectKInitialPartitioner : public IInitialPartitioner,
                                   private InitialPartitionerBase<DirectKInitialPartitioner> {
   using Base = InitialPartitionerBase<DirectKInitialPartitioner>;
@@ -14,7 +12,9 @@ class DirectKInitialPartitioner : public IInitialPartitioner,
 
   public:
     DirectKInitialPartitioner(Hypergraph& hypergraph, Context& context) :
-      Base(hypergraph, context) { }
+      Base(hypergraph, context),
+      _descending_nodes(bin_packing::nodesInDescendingWeightOrder(hypergraph)),
+      _block_queue(context.partition.k) { }
 
     ~DirectKInitialPartitioner() override = default;
 
@@ -26,16 +26,20 @@ class DirectKInitialPartitioner : public IInitialPartitioner,
 
   private:
     void partitionImpl() override final {
-      uint16_t current_k = 0;
+      LOG << "INIT Q";
+      for (PartitionID k = 0; k < _context.partition.k; k++) {
+        _block_queue.push(k, 0);
+      }
+      LOG << "ASSIGN TO Q";
       for (const auto hn : _hg.nodes()) {
         if (_hg.nodeIsEnabled(hn)) {
-          _hg.setNodePart(hn, current_k++);
+          PartitionID lightestBlock = _block_queue.top();
+          _hg.setNodePart(hn, lightestBlock);
+          _block_queue.increaseKey(lightestBlock, _hg.nodeWeight(hn));
         }
       }
-      if (_context.partition.k != current_k) {
-        LOG << "!!! Direct k initial partitioning was used, although there were not k nodes !!!";
-        std::exit(1);
-      }
     }
+    std::vector<HypernodeID> _descending_nodes;
+    ds::BinaryMinHeap<PartitionID, HypernodeWeight> _block_queue;
 };
 }
