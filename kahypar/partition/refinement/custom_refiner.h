@@ -146,26 +146,29 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     PartitionID k = _context.partition.k;
     PartitionID source = k;
     PartitionID sink = k + 1;
-    std::vector<HypernodeWeight> capacity_matrix((k + 2) * (k + 2), 0);
+    PartitionID size = k + 2; //k quotient nodes + real sink + real source
+    std::vector<HypernodeWeight> capacity_matrix(size * size, 0);
     QuotientGraphBlockScheduler scheduler(_hg, _context);
     scheduler.buildQuotientGraph();
     for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
-      capacity_matrix[edge.first * (k + 2) + edge.second] = calculateQuotientEdgeCapacity(edge.first, edge.second);
+      capacity_matrix[edge.first * size + edge.second] = calculateQuotientEdgeCapacity(edge.first, edge.second);
     }
 
     for (PartitionID node = 0; node < k; node++) {
-      capacity_matrix[node * k + node] = calculateQuotientNodeCapacity(node);
+      capacity_matrix[node * size + node] = calculateQuotientNodeCapacity(node);
     }
     
     // Add edges between source and overloaded blocks and sink and underloaded blocks
     for (PartitionID pseudoSource = 0; pseudoSource < k; pseudoSource++) {
       if (isOverloadedBlock(pseudoSource)) {
-        capacity_matrix[source * (k + 2) + pseudoSource] = std::numeric_limits<PartitionID>::max();
+        capacity_matrix[source * size + pseudoSource] = std::numeric_limits<PartitionID>::max();
       }
       if (isUnderloadedBlock(pseudoSource)) {
-        capacity_matrix[pseudoSource * (k + 2) + sink] = std::numeric_limits<PartitionID>::max();
+        capacity_matrix[pseudoSource * size + sink] = std::numeric_limits<PartitionID>::max();
       }
       //This method here does not explicitly forbid nodes to be considered both over- and underloaded!!
+      //This should not happen, as otherwise there can be a augmenting path: source -> node -> sink, where both edges
+      //have max capacity and that flow wuold also be of max size but does not really mean anything
     }
     return capacity_matrix;
   }
@@ -223,8 +226,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
-      _flow_solver.solveFlow(calculateCapacityMatrix(), _context.partition.k, _context.partition.k + 1, true);
-
+    _flow_solver.solveFlow(calculateCapacityMatrix(), _context.partition.k, _context.partition.k + 1, true);
+    
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
                                                               current_km1)) {
