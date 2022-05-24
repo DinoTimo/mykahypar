@@ -32,6 +32,7 @@
 
 #include "kahypar/datastructure/fast_reset_array.h"
 #include "kahypar/datastructure/fast_reset_flag_array.h"
+#include "kahypar/datastructure/connectivity_sets.h"
 #include "kahypar/datastructure/sparse_map.h"
 #include "kahypar/definitions.h"
 #include "kahypar/meta/mandatory.h"
@@ -89,7 +90,10 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
-    _flow_solver() { }
+    _flow_solver(),
+    _flow_matrix(0),
+    _num_flow_nodes(_context.partition.k + 2),
+    _quotient_edge_capacities(_context.partition.k, 0) { }
 
   ~CustomKWayKMinusOneRefiner() override = default;
 
@@ -133,41 +137,56 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     uint16_t k = _context.partition.k;
     uint16_t current_step = _hg.currentNumNodes() - k;
     uint16_t total_num_steps = _hg.initialNumNodes() - k;
-    return idealBlockWeight()
-      * _context.partition.epsilon 
-      * (current_step / total_num_steps);
+    uint16_t step_diff = total_num_steps - current_step;
+    return static_cast<HypernodeWeight>(static_cast<double>(idealBlockWeight())
+      * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, 4)
+      * _context.partition.epsilon);
   }
 
   HypernodeWeight idealBlockWeight() {
     return _hg.totalWeight() / _context.partition.k;
   }
   
+
+  void initQuotientEdgeCapacities() {
+    //iterate over hypernodes and look for adjacent parts with gaincache.adjacentParts(..);
+    for (HyperedgeID edge : _hg.edges()) {
+      if (_hg.connectivitySet(edge).size() <= 1) {
+        continue;
+      }
+      for (HypernodeID pin : _hg.pins(edge)) {
+        for (PartitionID block : _hg.connectivitySet(edge)) {
+          _quotient_edge_capacities[_hg.partID(pin) * _context.partition.k + block] += _hg.nodeWeight(pin); 
+        }
+      }
+    }
+  }
+  
   std::vector<PartitionID> calculateCapacityMatrix() {
-    PartitionID k = _context.partition.k;
-    PartitionID source = k;
-    PartitionID sink = k + 1;
-    PartitionID size = k + 2; //k quotient nodes + real sink + real source
-    std::vector<HypernodeWeight> capacity_matrix(size * size, 0);
+    initQuotientEdgeCapacities();
+    PartitionID source = _context.partition.k;
+    PartitionID sink = source + 1;
+    std::vector<HypernodeWeight> capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0);
     QuotientGraphBlockScheduler scheduler(_hg, _context);
     scheduler.buildQuotientGraph();
     for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
-      capacity_matrix[edge.first * size + edge.second] = calculateQuotientEdgeCapacity(edge.first, edge.second);
+      capacity_matrix[edge.first * _num_flow_nodes + edge.second] = calculateQuotientEdgeCapacity(edge.first, edge.second);
     }
-
-    for (PartitionID node = 0; node < k; node++) {
-      capacity_matrix[node * size + node] = calculateQuotientNodeCapacity(node);
-    }
+    //this is deemed unnecessary for now. And will be ignored by ignoring node capacities in the flow solver later on.
+    /*for (PartitionID node = 0; node < _context.partition.k; node++) {
+      capacity_matrix[node * _num_flow_nodes + node] = calculateQuotientNodeCapacity(node);
+    }*/
     
     // Add edges between source and overloaded blocks and sink and underloaded blocks
-    for (PartitionID pseudoSource = 0; pseudoSource < k; pseudoSource++) {
+    for (PartitionID pseudoSource = 0; pseudoSource < _context.partition.k; pseudoSource++) {
       if (isOverloadedBlock(pseudoSource)) {
-        capacity_matrix[source * size + pseudoSource] = std::numeric_limits<PartitionID>::max();
+        capacity_matrix[source * _num_flow_nodes + pseudoSource] = std::numeric_limits<PartitionID>::max();
       }
       if (isUnderloadedBlock(pseudoSource)) {
-        capacity_matrix[pseudoSource * size + sink] = std::numeric_limits<PartitionID>::max();
+        capacity_matrix[pseudoSource * _num_flow_nodes + sink] = std::numeric_limits<PartitionID>::max();
       }
-      //This method here does not explicitly forbid nodes to be considered both over- and underloaded!!
-      //This should not happen, as otherwise there can be a augmenting path: source -> node -> sink, where both edges
+      //This method here does not explicitly forbid nodes to be considered both over- and underloaded!
+      //This should not happen, as otherwise there can be an augmenting path: source -> node -> sink, where both edges
       //have max capacity and that flow wuold also be of max size but does not really mean anything
     }
     return capacity_matrix;
@@ -178,7 +197,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   }
 
   HypernodeWeight calculateQuotientEdgeCapacity(PartitionID first, PartitionID second) {
-    return std::min(calculateQuotientNodeCapacity(first), calculateQuotientNodeCapacity(second));
+    return _quotient_edge_capacities[first * _context.partition.k + second];
   }
   
   bool isOverloadedBlock(PartitionID block) {
@@ -190,7 +209,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   }
 
   HypernodeWeight moveFeasibilityByFlow(PartitionID from, PartitionID to) {
-    return _flow_solver.flow(from, to);
+    return _flow_matrix[from * _num_flow_nodes + to];
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -226,8 +245,28 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
-    _flow_solver.solveFlow(calculateCapacityMatrix(), _context.partition.k, _context.partition.k + 1, true);
-    
+    std::vector<HypernodeWeight> capacity_matrix = calculateCapacityMatrix();
+    _flow_matrix = _flow_solver.solveFlow(capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
+    uint16_t k = _context.partition.k;
+    uint16_t current_step = _hg.currentNumNodes() - k;
+    uint16_t total_num_steps = _hg.initialNumNodes() - k;
+    bool printing = current_step <= 1 || current_step == total_num_steps / 2 || current_step >= total_num_steps - 2;
+    if (printing) {
+      std::string to_be_printed;
+      for (auto content : capacity_matrix) {
+        to_be_printed.append(std::to_string(content)).append(", "); 
+      }
+      LOG << to_be_printed;
+      to_be_printed.clear();
+      for (auto content : _flow_matrix) {
+        to_be_printed.append(std::to_string(content)).append(", "); 
+      }
+      LOG << to_be_printed;
+    }
+
+    DBG << "Current ideal block weight is: " << std::to_string(idealBlockWeight()) << " at step: " << std::to_string(current_step) << " of a total of " << std::to_string(total_num_steps) << " steps."; 
+    DBG << "Current upper bound block weight is: " << std::to_string(currentUpperBlockWeightBound()); 
+    DBG << "Current lower block weight is: " << std::to_string(currentLowerBlockWeightBound()); 
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
                                                               current_km1)) {
@@ -282,7 +321,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
         
         Base::moveHypernode(max_gain_node, from_part, to_part);
-        //update flow?
+        _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(max_gain_node);
+        _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(max_gain_node);
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],
@@ -1073,5 +1113,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
+  std::vector<HypernodeWeight> _flow_matrix;
+  PartitionID _num_flow_nodes;
+  std::vector<HypernodeWeight> _quotient_edge_capacities;
 };
 }  // namespace kahypar
