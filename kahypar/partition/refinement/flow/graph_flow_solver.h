@@ -81,6 +81,14 @@ class FlowSolver {
       return _input_capacity_adjacency_matrix[u * _num_nodes + v];
     }
 
+    Flow flow(const Node v) const {
+      return flow(v, v);
+    }
+
+    Flow flow(const Node start, const Node end) const {
+      return _output_flow_adjacency_matrix[start * _num_nodes + end];
+    }
+
     Flow flow(const Edge e) const {
       return flow(e.start, e.end);
     }
@@ -119,15 +127,6 @@ class FlowSolver {
     FlowSolver(FlowSolver&&) = delete;
     FlowSolver& operator= (const FlowSolver&) = delete;
     FlowSolver& operator= (FlowSolver&&) = delete;
-
-    //this should be private and shared to test classes via Friend_test TODO
-    Flow flow(const Node v) const {
-      return flow(v, v);
-    }
-
-    Flow flow(const Node start, const Node end) const {
-      return _output_flow_adjacency_matrix[start * _num_nodes + end];
-    }
 
     std::vector<Capacity> solveFlow(const std::vector<Capacity> input, const Node source, const Node sink, const bool respect_Node_Capacity) {
       init(input, source, sink);
