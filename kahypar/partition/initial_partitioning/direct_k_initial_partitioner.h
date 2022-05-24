@@ -26,11 +26,9 @@ class DirectKInitialPartitioner : public IInitialPartitioner,
 
   private:
     void partitionImpl() override final {
-      LOG << "INIT Q";
       for (PartitionID k = 0; k < _context.partition.k; k++) {
         _block_queue.push(k, 0);
       }
-      LOG << "ASSIGN TO Q";
       for (const auto hn : _hg.nodes()) {
         if (_hg.nodeIsEnabled(hn)) {
           PartitionID lightestBlock = _block_queue.top();
