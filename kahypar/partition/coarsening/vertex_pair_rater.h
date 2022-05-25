@@ -149,7 +149,9 @@ class VertexPairRater {
       ret.value = max_rating;
       ret.target = target;
       ret.valid = true;
-      ASSERT(_hg.communities()[u] == _hg.communities()[ret.target]);
+      // if contracting of communities is allowed, it is possible for both vertices of the contraction to be part of different communities
+      ASSERT(_hg.communities()[u] == _hg.communities()[ret.target]
+          || (_context.coarsening.rating.contract_communities != ContractCommunities::contract_communities ||  (_hg.communitySizes()[_hg.communities()[u]] <= 1 && _hg.communitySizes()[_hg.communities()[ret.target]] <= 1)));
     }
     ASSERT(!ret.valid || (_hg.partID(u) == _hg.partID(ret.target)));
     _tmp_ratings.clear();
