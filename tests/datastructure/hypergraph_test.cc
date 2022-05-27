@@ -45,11 +45,11 @@ TEST_F(APartitionedHypergraph, CountsCommunitySizesCorrectly) {
   Context context;
   /*
   p-detect-communities=true
-p-detect-communities-in-ip=false
-p-reuse-communities=true
-p-max-louvain-pass-iterations=100
-p-min-eps-improvement=0.0001
-p-louvain-edge-weight=hybrid*/
+  p-detect-communities-in-ip=false
+  p-reuse-communities=true
+  p-max-louvain-pass-iterations=100
+  p-min-eps-improvement=0.0001
+  p-louvain-edge-weight=hybrid*/
   context.preprocessing.enable_community_detection = true;
   context.preprocessing.community_detection.enable_in_initial_partitioning = false;
   context.preprocessing.community_detection.reuse_communities = true;
@@ -61,22 +61,23 @@ p-louvain-edge-weight=hybrid*/
   HypernodeID u = 0;
   HypernodeID v = u + 1;
   for (; v < hypergraph._num_hypernodes; v++) {
-    if (hypergraph.communities()[v] != hypergraph.communities()[u]) {
+    if (hypergraph.communities()[v] != hypergraph.communities()[u] && hypergraph.partID(v) == hypergraph.partID(u)) {
       break;
     }
-  }
-  
+  } //On this example hypergraph, such a hypernode u exists. This is not guaranteed though. Be careful
+
   PartitionID commU = hypergraph.communities()[u];
   PartitionID commV = hypergraph.communities()[v];
   ASSERT_THAT(commU, Ne(commV));
+  ASSERT_THAT(hypergraph.partID(u), hypergraph.partID(v));
 
   PartitionID prevCommSizeU = hypergraph.communitySizes()[commU];
   PartitionID prevCommSizeV = hypergraph.communitySizes()[commV];
-
+  LOG << "first contraction";
   hypergraph.contract(u, v);
   ASSERT_THAT(hypergraph.communitySizes()[commU], Eq(prevCommSizeU));
   ASSERT_THAT(hypergraph.communitySizes()[commV], Eq(prevCommSizeV - 1));
-
+  LOG << "first uncontraction";
   hypergraph.uncontract(Memento {u, v});
 
   ASSERT_THAT(hypergraph.communitySizes()[commU], Eq(prevCommSizeU));
