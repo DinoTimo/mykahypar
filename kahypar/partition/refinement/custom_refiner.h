@@ -93,7 +93,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _flow_solver(),
     _flow_matrix(0),
     _num_flow_nodes(_context.partition.k + 2),
-    _quotient_edge_capacities(_context.partition.k, 0) { }
+    _quotient_edge_capacities(_context.partition.k * _context.partition.k, 0) { }
 
   ~CustomKWayKMinusOneRefiner() override = default;
 
