@@ -180,7 +180,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       PartitionID lighterBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.second : edge.first;
       HypernodeWeight heavierBlockWeight = _hg.partWeight(heavierBlockID);
       HypernodeWeight lighterBlockWeight = _hg.partWeight(lighterBlockID);
-      HypernodeWeight overload = heavierBlockWeight - currentUpperBlockWeightBound();
+      HypernodeWeight overload = heavierBlockWeight - currentUpperBlockWeightBound(); //ideal
       HypernodeWeight underload = currentLowerBlockWeightBound() - lighterBlockWeight;
       if (overload < 0 || underload < 0) {
         continue;
@@ -197,10 +197,10 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     // Add edges between source and overloaded blocks and sink and underloaded blocks
     for (PartitionID pseudoSource = 0; pseudoSource < _context.partition.k; pseudoSource++) {
       if (isOverloadedBlock(pseudoSource)) {
-        capacity_matrix[source * _num_flow_nodes + pseudoSource] = std::numeric_limits<PartitionID>::max();
+        capacity_matrix[source * _num_flow_nodes + pseudoSource] = std::numeric_limits<PartitionID>::max(); //auf overload
       }
       if (isUnderloadedBlock(pseudoSource)) {
-        capacity_matrix[pseudoSource * _num_flow_nodes + sink] = std::numeric_limits<PartitionID>::max();
+        capacity_matrix[pseudoSource * _num_flow_nodes + sink] = std::numeric_limits<PartitionID>::max(); //underload
       }
       //This method here does not explicitly forbid nodes to be considered both over- and underloaded!
       //This should not happen, as otherwise there can be an augmenting path: source -> node -> sink, where both edges
