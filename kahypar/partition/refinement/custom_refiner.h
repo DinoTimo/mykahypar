@@ -319,9 +319,9 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
         if (part == to_part) {
           continue;
         }
+        //ASSERT(!_pq.empty());
         _pq.remove(max_gain_node, part);
       }
-
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
       HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
