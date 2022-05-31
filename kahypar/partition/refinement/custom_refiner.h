@@ -93,7 +93,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _flow_solver(),
     _flow_matrix(0),
     _num_flow_nodes(_context.partition.k + 2),
-    _quotient_edge_capacities(_context.partition.k * _context.partition.k, 0) { }
+    _quotient_edge_capacities(_context.partition.k * _context.partition.k, 0),
+    _vertex_block_pair_bitvector(_hg.initialNumNodes() * _context.partition.k, false) { }
 
   ~CustomKWayKMinusOneRefiner() override = default;
 
@@ -149,18 +150,23 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   
 
   void initQuotientEdgeCapacities() {
-    //iterate over hypernodes and look for adjacent parts with gaincache.adjacentParts(..);
+    std::fill(_vertex_block_pair_bitvector.begin(), _vertex_block_pair_bitvector.end(), false);
+    std::fill(_quotient_edge_capacities.begin(), _quotient_edge_capacities.end(), 0);
     for (HyperedgeID edge : _hg.edges()) {
       if (_hg.connectivitySet(edge).size() <= 1) {
         continue;
       }
       for (HypernodeID pin : _hg.pins(edge)) {
         for (PartitionID block : _hg.connectivitySet(edge)) {
-          _quotient_edge_capacities[_hg.partID(pin) * _context.partition.k + block] += _hg.nodeWeight(pin); 
+          if (!_vertex_block_pair_bitvector.at(pin * _context.partition.k + block)) {
+            _quotient_edge_capacities[_hg.partID(pin) * _context.partition.k + block] += _hg.nodeWeight(pin);
+            _vertex_block_pair_bitvector.at(pin * _context.partition.k + block) = true;
+          }
         }
       }
     }
   }
+
   
   std::vector<PartitionID> calculateCapacityMatrix() {
     initQuotientEdgeCapacities();
@@ -170,7 +176,18 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     QuotientGraphBlockScheduler scheduler(_hg, _context);
     scheduler.buildQuotientGraph();
     for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
-      capacity_matrix[edge.first * _num_flow_nodes + edge.second] = calculateQuotientEdgeCapacity(edge.first, edge.second);
+      PartitionID heavierBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.first : edge.second;
+      PartitionID lighterBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.second : edge.first;
+      HypernodeWeight heavierBlockWeight = _hg.partWeight(heavierBlockID);
+      HypernodeWeight lighterBlockWeight = _hg.partWeight(lighterBlockID);
+      HypernodeWeight overload = heavierBlockWeight - currentUpperBlockWeightBound();
+      HypernodeWeight underload = currentLowerBlockWeightBound() - lighterBlockWeight;
+      if (overload < 0 || underload < 0) {
+        continue;
+      }
+      HypernodeWeight maxEdgeCapacity = std::min(overload, underload);  
+      capacity_matrix.at(heavierBlockID * _num_flow_nodes + lighterBlockID) = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+      
     }
     //this is deemed unnecessary for now. And will be ignored by ignoring node capacities in the flow solver later on.
     /*for (PartitionID node = 0; node < _context.partition.k; node++) {
@@ -400,8 +417,6 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));
-    ASSERT(best_metrics.km1 <= initial_km1, V(initial_km1) << V(best_metrics.km1));
-
     return FMImprovementPolicy::improvementFound(best_metrics.km1, initial_km1,
                                                  best_metrics.imbalance, initial_imbalance,
                                                  _context.partition.epsilon);
@@ -1116,5 +1131,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   std::vector<HypernodeWeight> _flow_matrix;
   PartitionID _num_flow_nodes;
   std::vector<HypernodeWeight> _quotient_edge_capacities;
+  std::vector<bool> _vertex_block_pair_bitvector;
+  
 };
 }  // namespace kahypar
