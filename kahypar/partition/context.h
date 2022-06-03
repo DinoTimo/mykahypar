@@ -191,6 +191,7 @@ struct LocalSearchParameters {
   struct FM {
     uint32_t max_number_of_fruitless_moves = std::numeric_limits<uint32_t>::max();
     double adaptive_stopping_alpha = std::numeric_limits<double>::max();
+    double balance_convergence_speed = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
   };
 
@@ -222,7 +223,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
-      params.algorithm == RefinementAlgorithm::custom_kway_fm_km1 || //timo custom
+      params.algorithm == RefinementAlgorithm::custom_kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -244,6 +245,9 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     str << "    execution policy:                 " << params.flow.execution_policy << std::endl;
     if (params.flow.execution_policy == FlowExecutionMode::constant) {
       str << "    beta:                             " << params.flow.beta << std::endl;
+    }
+    if (params.algorithm == RefinementAlgorithm::custom_kway_fm_km1) {
+      str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
     }
   } else if (params.algorithm == RefinementAlgorithm::do_nothing) {
     str << "  no coarsening!  " << std::endl;

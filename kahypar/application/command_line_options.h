@@ -376,7 +376,10 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-stop-alpha" : "r-fm-stop-alpha"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.adaptive_stopping_alpha : &context.local_search.fm.adaptive_stopping_alpha))->value_name("<double>"),
     "Parameter alpha for adaptive stopping rule \n"
-    "(infinity: -1)");
+    "(infinity: -1)")
+    ((initial_partitioning ? "i-r-fm-balance-convergence-speed" : "r-fm-balance-convergence-speed"),
+    po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_speed : &context.local_search.fm.balance_convergence_speed))->value_name("<double>"),
+    "Parameter for how quickly the partition must fulfill the balance constraint");
   options.add(createFlowRefinementOptionsDescription(context, num_columns, initial_partitioning));
   options.add(createHyperFlowCutterRefinementOptionsDescription(context, num_columns, initial_partitioning));
   return options;

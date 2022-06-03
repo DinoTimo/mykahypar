@@ -140,7 +140,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     uint16_t total_num_steps = _hg.initialNumNodes() - k;
     uint16_t step_diff = total_num_steps - current_step;
     return static_cast<HypernodeWeight>(static_cast<double>(idealBlockWeight())
-      * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, 4)
+      * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, _context.local_search.fm.balance_convergence_speed)
       * _context.partition.epsilon);
   }
 
