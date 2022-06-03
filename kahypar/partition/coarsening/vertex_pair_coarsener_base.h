@@ -44,12 +44,17 @@ template <class PrioQueue = ds::BinaryMaxHeap<HypernodeID, RatingType> >
 class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
   static constexpr bool debug = false;
+  std::vector<double> _imbalances;
+  std::vector<double> _km1s;
 
  public:
   VertexPairCoarsenerBase(Hypergraph& hypergraph, const Context& context,
                           const HypernodeWeight weight_of_heaviest_node) :
     CoarsenerBase(hypergraph, context, weight_of_heaviest_node),
+    _imbalances(0, 0),
+    _km1s(0, 0),
     _pq(_hg.initialNumNodes()) { }
+
 
   ~VertexPairCoarsenerBase() override = default;
 
@@ -68,7 +73,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
                                 metrics::imbalance(_hg, _context),
                                 metrics::heaviest_domain_weight(_hg) };
     HyperedgeWeight initial_objective = std::numeric_limits<HyperedgeWeight>::min();
-  //hier imbalance loggen bei jedem Schritt.
     switch (_context.partition.objective) {
       case Objective::cut:
         initial_objective = current_metrics.cut;
@@ -117,7 +121,8 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
           }
         break;
       }
-
+      _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
+      _km1s.push_back(metrics::km1(_hg));
       refinement_nodes.clear();
       refinement_nodes.push_back(_history.back().contraction_memento.u);
       refinement_nodes.push_back(_history.back().contraction_memento.v);
@@ -141,7 +146,9 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     //        "balance_constraint is violated after uncontraction:" << metrics::imbalance(_hg, _context)
     //        << ">" << __context.partition.epsilon);
     // _context.stats.set(StatTag::LocalSearch, "finalImbalance", current_metrics.imbalance);
-
+    writeVectorToFile(_km1s, "km1.txt");
+    writeVectorToFile(_imbalances, "imbalances.txt");
+  
     bool improvement_found = false;
     switch (_context.partition.objective) {
       case Objective::cut:

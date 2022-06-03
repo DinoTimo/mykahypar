@@ -22,6 +22,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <string>
 
@@ -84,4 +85,28 @@ class LoggerVoidify {
  public:
   void operator& (Logger&) { }
 };
+
+template<typename Content>
+std::string joinVector(std::vector<Content> & vec, std::string prefix, std::string delim, std::string postfix) {
+  std::string str;
+  str.append(prefix);
+  unsigned long int index = 0;
+  while (index < vec.size() - 1) {
+    str.append(std::to_string(vec[index]));
+    str.append(delim);
+    index++;
+  }
+  str.append(std::to_string(vec[index]));
+  str.append(postfix);
+  return str;
+}
+
+template <typename Content>
+void writeVectorToFile(std::vector<Content> vec, std::string fileName) {
+  std::ofstream file;
+  file.open(fileName);
+  file << joinVector(vec, "", "\n", "");
+  file.close();
+}
+
 }  // namespace kahypar
