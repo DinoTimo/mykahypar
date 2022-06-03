@@ -24,7 +24,7 @@
 
 #if defined(_WIN32)
 #include <windows.h>
-//#include <process.h> timo
+//#include <process.h> commented out to avoid vscode bug on linux
 #else
 #include <sys/ioctl.h>
 #endif

@@ -290,7 +290,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       Gain max_gain = kInvalidGain;
       HypernodeID max_gain_node = kInvalidHN;
       PartitionID to_part = Hypergraph::kInvalidPartition;
-      _pq.deleteMax(max_gain_node, max_gain, to_part); //to_part, part wo er hin soll, timo
+      _pq.deleteMax(max_gain_node, max_gain, to_part);
       const PartitionID from_part = _hg.partID(max_gain_node);
 
       DBG << V(current_km1) << V(max_gain_node) << V(max_gain)
@@ -319,7 +319,6 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
         if (part == to_part) {
           continue;
         }
-        //ASSERT(!_pq.empty());
         _pq.remove(max_gain_node, part);
       }
       _hg.mark(max_gain_node);

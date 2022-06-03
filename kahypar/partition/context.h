@@ -120,7 +120,6 @@ inline std::ostream& operator<< (std::ostream& str, const PreprocessingParameter
 }
 
 struct RatingParameters {
-  //my parameter, timo
   IgnoreMaxNodeWeight ignore_max_node_weight = IgnoreMaxNodeWeight::UNDEFINED;
   RatingFunction rating_function = RatingFunction::UNDEFINED;
   ContractCommunities contract_communities = ContractCommunities::UNDEFINED; 
@@ -532,7 +531,7 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
 static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::kway_fm ||
       algo == RefinementAlgorithm::kway_fm_km1 ||
-      algo == RefinementAlgorithm::custom_kway_fm_km1 || //custom timo
+      algo == RefinementAlgorithm::custom_kway_fm_km1 ||
       algo == RefinementAlgorithm::kway_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1) {
