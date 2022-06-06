@@ -180,8 +180,9 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       PartitionID lighterBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.second : edge.first;
       HypernodeWeight heavierBlockWeight = _hg.partWeight(heavierBlockID);
       HypernodeWeight lighterBlockWeight = _hg.partWeight(lighterBlockID);
-      HypernodeWeight overload = heavierBlockWeight - currentUpperBlockWeightBound(); //ideal
-      HypernodeWeight underload = currentLowerBlockWeightBound() - lighterBlockWeight;
+      HypernodeWeight idealWeight = idealBlockWeight();
+      HypernodeWeight overload = heavierBlockWeight - idealWeight;
+      HypernodeWeight underload = idealWeight - lighterBlockWeight;
       if (overload < 0 || underload < 0) {
         continue;
       }
