@@ -121,8 +121,10 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
           }
         break;
       }
-      _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
-      _km1s.push_back(metrics::km1(_hg));
+      if (_context.partition.verbose_output) {
+        _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
+        _km1s.push_back(metrics::km1(_hg));
+      }
       refinement_nodes.clear();
       refinement_nodes.push_back(_history.back().contraction_memento.u);
       refinement_nodes.push_back(_history.back().contraction_memento.v);
@@ -146,8 +148,10 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     //        "balance_constraint is violated after uncontraction:" << metrics::imbalance(_hg, _context)
     //        << ">" << __context.partition.epsilon);
     // _context.stats.set(StatTag::LocalSearch, "finalImbalance", current_metrics.imbalance);
-    writeVectorToFile(_km1s, "km1.txt");
-    writeVectorToFile(_imbalances, "imbalances.txt");
+    if (_context.partition.verbose_output) {
+      writeVectorToFile(_km1s, "km1.txt");
+      writeVectorToFile(_imbalances, "imbalances.txt");
+    }
   
     bool improvement_found = false;
     switch (_context.partition.objective) {
