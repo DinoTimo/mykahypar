@@ -196,6 +196,7 @@ struct LocalSearchParameters {
 
   struct Flow {
     FlowExecutionMode execution_policy = FlowExecutionMode::UNDEFINED;
+    size_t max_flow_improvement_iterations = 0;
     size_t beta = std::numeric_limits<size_t>::max();
   };
 
@@ -247,6 +248,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     }
     if (params.algorithm == RefinementAlgorithm::custom_kway_fm_km1) {
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
+      str << "    max_flow_improvement_iterations   " << params.flow.max_flow_improvement_iterations << std::endl;
     }
   } else if (params.algorithm == RefinementAlgorithm::do_nothing) {
     str << "  no coarsening!  " << std::endl;

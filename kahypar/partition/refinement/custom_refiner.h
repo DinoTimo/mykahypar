@@ -167,6 +167,20 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     }
   }
 
+  bool isSatisfyingFlow(std::vector<HypernodeWeight> flow, HypernodeWeight source, HypernodeWeight sink, std::vector<HypernodeWeight> capacity) {
+    ASSERT(flow.size() == _num_flow_nodes * _num_flow_nodes);
+    for (int i = 0; i < _num_flow_nodes; i++) {
+      if (i != source && flow[source * _num_flow_nodes + i] < 0.9 * capacity[source * _num_flow_nodes + i]) {//TODO: MAGIC NUMBER
+        return false;
+      }
+    }/*
+    for (int i = 0; i < num_flow_nodes; i++) {
+      if (flow[i * _num_flow_nodes + sink] < 0.5 * capacity[i * _num_flow_nodes + sink]) {//TODO: MAGIC NUMBER
+        return false;
+      }
+    }*/
+    return true;
+  }
   
   std::vector<PartitionID> calculateCapacityMatrix() {
     initQuotientEdgeCapacities();
@@ -184,11 +198,12 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       HypernodeWeight overload = heavierBlockWeight - idealWeight;
       HypernodeWeight underload = idealWeight - lighterBlockWeight;
       if (overload < 0 || underload < 0) {
+        capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
         continue;
       }
-      HypernodeWeight maxEdgeCapacity = std::min(overload, underload);  
-      capacity_matrix.at(heavierBlockID * _num_flow_nodes + lighterBlockID) = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
-      
+      HypernodeWeight maxEdgeCapacity = std::min(overload, underload);
+      capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+      //capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::numeric_limits<HypernodeWeight>::max();
     }
     //this is deemed unnecessary for now. And will be ignored by ignoring node capacities in the flow solver later on.
     /*for (PartitionID node = 0; node < _context.partition.k; node++) {
@@ -196,16 +211,13 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     }*/
     
     // Add edges between source and overloaded blocks and sink and underloaded blocks
-    for (PartitionID pseudoSource = 0; pseudoSource < _context.partition.k; pseudoSource++) {
-      if (isOverloadedBlock(pseudoSource)) {
-        capacity_matrix[source * _num_flow_nodes + pseudoSource] = std::numeric_limits<PartitionID>::max(); //auf overload
+    for (PartitionID blockNode = 0; blockNode < _context.partition.k; blockNode++) {
+      if (isOverloadedBlock(blockNode)) {
+        capacity_matrix[source * _num_flow_nodes + blockNode] = std::numeric_limits<HypernodeWeight>::max(); //_hg.partWeight(blockNode) - idealBlockWeight();
       }
-      if (isUnderloadedBlock(pseudoSource)) {
-        capacity_matrix[pseudoSource * _num_flow_nodes + sink] = std::numeric_limits<PartitionID>::max(); //underload
+      if (isUnderloadedBlock(blockNode)) {
+        capacity_matrix[blockNode * _num_flow_nodes + sink] = std::numeric_limits<HypernodeWeight>::max(); //idealBlockWeight() - _hg.partWeight(blockNode);
       }
-      //This method here does not explicitly forbid nodes to be considered both over- and underloaded!
-      //This should not happen, as otherwise there can be an augmenting path: source -> node -> sink, where both edges
-      //have max capacity and that flow wuold also be of max size but does not really mean anything
     }
     return capacity_matrix;
   }
@@ -239,6 +251,9 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
            V(best_metrics.imbalance) << V(metrics::imbalance(_hg, _context)));
     Base::reset();
     _unremovable_he_parts.reset();
+    if (_hg.currentNumNodes() - _context.partition.k == 0) {
+      return false;
+    }
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -264,7 +279,24 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     const double beta = log(_hg.currentNumNodes());
 
     std::vector<HypernodeWeight> capacity_matrix = calculateCapacityMatrix();
+    std::vector<HypernodeWeight> original_capacity_matrix = capacity_matrix;
     _flow_matrix = _flow_solver.solveFlow(capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
+    size_t current_iter = 0;
+    while (!isSatisfyingFlow(_flow_matrix, _context.partition.k, _context.partition.k + 1, original_capacity_matrix)
+          && current_iter < _context.local_search.flow.max_flow_improvement_iterations) {
+      for (HypernodeWeight& nodeWeight : capacity_matrix) {
+        HypernodeWeight limit = std::numeric_limits<HypernodeWeight>::max() / 2;
+        if (nodeWeight < limit) {
+          nodeWeight *= 2;
+        }
+      }
+      _flow_matrix = _flow_solver.solveFlow(capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
+      current_iter++;
+    }
+    if (current_iter >= _context.local_search.flow.max_flow_improvement_iterations) {
+      LOG << "Flow Calculation cancelled after " + std::to_string(current_iter) + " tries";
+    }
+
     uint16_t k = _context.partition.k;
     uint16_t current_step = _hg.currentNumNodes() - k;
     uint16_t total_num_steps = _hg.initialNumNodes() - k;
@@ -331,7 +363,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
-                                      2 * moveFeasibilityByFlow(from_part, to_part) > _hg.nodeWeight(max_gain_node);
+                                      moveFeasibilityByFlow(from_part, to_part) > _hg.nodeWeight(max_gain_node);
       const bool balanced_and_keeps_balance = current_heaviest_block_weight < currentUpperBound &&
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
       
