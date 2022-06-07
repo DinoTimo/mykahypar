@@ -149,8 +149,8 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     //        << ">" << __context.partition.epsilon);
     // _context.stats.set(StatTag::LocalSearch, "finalImbalance", current_metrics.imbalance);
     if (_context.partition.verbose_output) {
-      writeVectorToFile(_km1s, "km1.txt");
-      writeVectorToFile(_imbalances, "imbalances.txt");
+      writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
+      writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
     }
   
     bool improvement_found = false;

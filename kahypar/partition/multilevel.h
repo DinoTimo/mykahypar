@@ -126,6 +126,11 @@ static inline void partition(Hypergraph& hypergraph,
                         std::chrono::duration<double>(end - start).count());
 
   io::printLocalSearchResults(context, hypergraph);
+
+  if (context.local_search.algorithm == kahypar::RefinementAlgorithm::custom_kway_fm_km1) {
+    LOG << "Calling python plotting script";
+    io::callPythonPlottingScript();
+  }
 }
 
 static inline void partitionRepeatedOnInfeasible(Hypergraph& hypergraph,

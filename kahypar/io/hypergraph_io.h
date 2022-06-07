@@ -431,5 +431,13 @@ static inline void writeFixedVertexFile(const Hypergraph& hypergraph, const std:
   }
   out_stream.close();
 }
+
+static inline void callPythonPlottingScript() {
+  LOG << "Called python plotting script";
+  std::string filename = "../partitioning_results/plotting.py";
+  std::string command = "python3 ";
+  command += filename;
+  system(command.c_str());
+}
 }  // namespace io
 }  // namespace kahypar
