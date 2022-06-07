@@ -73,6 +73,7 @@ TEST_F(APartitionedHypergraph, CountsCommunitySizesCorrectly) {
 
   PartitionID prevCommSizeU = hypergraph.communitySizes()[commU];
   PartitionID prevCommSizeV = hypergraph.communitySizes()[commV];
+  hypergraph.initializeNumCutHyperedges();
   LOG << "first contraction";
   hypergraph.contract(u, v);
   ASSERT_THAT(hypergraph.communitySizes()[commU], Eq(prevCommSizeU));
