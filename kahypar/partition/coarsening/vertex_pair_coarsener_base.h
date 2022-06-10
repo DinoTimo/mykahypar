@@ -45,6 +45,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
   static constexpr bool debug = false;
   std::vector<double> _imbalances;
+  std::vector<double> _target_imbalances;
   std::vector<double> _km1s;
 
  public:
@@ -52,6 +53,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
                           const HypernodeWeight weight_of_heaviest_node) :
     CoarsenerBase(hypergraph, context, weight_of_heaviest_node),
     _imbalances(0, 0),
+    _target_imbalances(0, 0),
     _km1s(0, 0),
     _pq(_hg.initialNumNodes()) { }
 
@@ -124,6 +126,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       if (_context.partition.verbose_output) {
         _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
         _km1s.push_back(metrics::km1(_hg));
+        _target_imbalances.push_back(metrics::currentUpperBlockWeightBound(_hg, _context));
       }
       refinement_nodes.clear();
       refinement_nodes.push_back(_history.back().contraction_memento.u);
@@ -151,6 +154,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     if (_context.partition.verbose_output) {
       writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
       writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
+      writeVectorToFile(_target_imbalances, "../partitioning_results/data/target_imbalances.txt");
     }
   
     bool improvement_found = false;

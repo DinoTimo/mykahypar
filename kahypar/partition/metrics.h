@@ -129,11 +129,20 @@ static inline HyperedgeWeight objective(const Hypergraph& hg, const Objective& o
       LOG << "Unknown Objective";
       exit(-1);
     }
-
-
-
   }
 
+  // This is duplicate code
+  static inline HypernodeWeight currentUpperBlockWeightBound(const Hypergraph & hg, const Context & context) {
+    HypernodeWeight ideal = hg.totalWeight() / context.partition.k;
+    uint16_t k = context.partition.k;
+    uint16_t current_step = hg.currentNumNodes() - k;
+    uint16_t total_num_steps = hg.initialNumNodes() - k;
+    uint16_t step_diff = total_num_steps - current_step;
+    HypernodeWeight diff = static_cast<HypernodeWeight>(static_cast<double>(ideal)
+      * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, context.local_search.fm.balance_convergence_speed)
+      * context.partition.epsilon);
+    return ideal + diff;
+  }
 
   static inline HypernodeWeight heaviest_domain_weight(const Hypergraph& hg) {
     HypernodeWeight max_weight = hg.partWeight(0);
