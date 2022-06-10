@@ -294,7 +294,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       current_iter++;
     }
     if (current_iter >= _context.local_search.flow.max_flow_improvement_iterations) {
-      LOG << "Flow Calculation cancelled after " + std::to_string(current_iter) + " tries";
+      DBG << "Flow Calculation cancelled after " + std::to_string(current_iter) + " tries";
     }
 
     uint16_t k = _context.partition.k;
@@ -363,9 +363,9 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
-                                      moveFeasibilityByFlow(from_part, to_part) > _hg.nodeWeight(max_gain_node);
-      const bool balanced_and_keeps_balance = current_heaviest_block_weight < currentUpperBound &&
-                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
+                                      moveFeasibilityByFlow(from_part, to_part) >= _hg.nodeWeight(max_gain_node);
+      const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
+                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound; //
       
       if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
         
