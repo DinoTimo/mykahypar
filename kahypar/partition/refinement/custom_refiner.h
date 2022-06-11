@@ -302,16 +302,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     uint16_t total_num_steps = _hg.initialNumNodes() - k;
     bool printing = current_step <= 1 || current_step == total_num_steps / 2 || current_step >= total_num_steps - 2;
     if (printing) {
-      std::string to_be_printed;
-      for (auto content : capacity_matrix) {
-        to_be_printed.append(std::to_string(content)).append(", "); 
-      }
-      LOG << to_be_printed;
-      to_be_printed.clear();
-      for (auto content : _flow_matrix) {
-        to_be_printed.append(std::to_string(content)).append(", "); 
-      }
-      LOG << to_be_printed;
+      LOG <<kahypar::joinVector(capacity_matrix, "[", ",", "]");
+      LOG <<kahypar::joinVector(_flow_matrix, "[", ",", "]");
     }
 
     DBG << "Current ideal block weight is: " << std::to_string(idealBlockWeight()) << " at step: " << std::to_string(current_step) << " of a total of " << std::to_string(total_num_steps) << " steps."; 
@@ -368,7 +360,11 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
       if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
-        
+        if (_hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node)) {
+          DBG << max_gain_node << " is tried to be moved from " << from_part << " to " << to_part << " at step " << current_step;
+          DBG << "is balanced_and_keeps_balance: " << balanced_and_keeps_balance;
+          DBG << "is imbalanced_but_improves_balance: " << imbalanced_but_improves_balance;
+        }
         Base::moveHypernode(max_gain_node, from_part, to_part);
         _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(max_gain_node);
         _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(max_gain_node);
