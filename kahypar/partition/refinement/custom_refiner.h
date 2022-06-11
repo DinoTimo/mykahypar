@@ -365,8 +365,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
                                       moveFeasibilityByFlow(from_part, to_part) >= _hg.nodeWeight(max_gain_node);
       const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
-                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound; //
-      
+                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
+                    _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
       if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
         
         Base::moveHypernode(max_gain_node, from_part, to_part);
