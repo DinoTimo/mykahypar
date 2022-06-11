@@ -612,6 +612,23 @@ po::options_description createEvolutionaryOptionsDescription(Context& context,
   return evolutionary_options;
 }
 
+
+po::options_description createLoggingOptionsDescription(Context& context,
+                                                             const int num_columns) {
+  po::options_description logging_options("Logging Options", num_columns);
+  logging_options.add_options()
+    ("logging-show-diagram",
+    po::value<bool>(&context.logging.show_diagram)->value_name("<bool>"),
+    "Show refinement values after partitioning")
+    ("logging-file-log-level",
+    po::value<std::string>()->value_name("string")->notifier(
+      [&](const std::string& log_level) {
+      context.logging.file_log_level = kahypar::fileLogLevelFromString(log_level);
+    }),
+    "Which values are written to file");
+  return logging_options;
+}
+
 po::options_description createGenericOptionsDescription(Context& context,
                                                         const int num_columns) {
   po::options_description generic_options("Generic Options", num_columns);
@@ -688,6 +705,8 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
 
   po::options_description evolutionary_options = createEvolutionaryOptionsDescription(context, num_columns);
 
+  po::options_description logging_options = createLoggingOptionsDescription(context, num_columns);
+
   po::options_description cmd_line_options;
   cmd_line_options.add(generic_options)
   .add(required_options)
@@ -698,6 +717,7 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
   .add(ip_options)
   .add(refinement_options)
   .add(evolutionary_options)
+  .add(logging_options)
   .add(write_snapshot);
 
   po::variables_map cmd_vm;
@@ -726,7 +746,8 @@ void processCommandLineInput(Context& context, int argc, char* argv[]) {
   .add(coarsening_options)
   .add(ip_options)
   .add(refinement_options)
-  .add(evolutionary_options);
+  .add(evolutionary_options)
+  .add(logging_options);
 
   po::store(po::parse_config_file(file, ini_line_options, true), cmd_vm);
   po::notify(cmd_vm);
@@ -767,7 +788,8 @@ void parseIniToContext(Context& context, const std::string& ini_filename) {
   .add(createCoarseningOptionsDescription(context, num_columns, false))
   .add(createInitialPartitioningOptionsDescription(context, num_columns))
   .add(createRefinementOptionsDescription(context, num_columns, false))
-  .add(createEvolutionaryOptionsDescription(context, num_columns));
+  .add(createEvolutionaryOptionsDescription(context, num_columns))
+  .add(createLoggingOptionsDescription(context, num_columns));
 
   po::store(po::parse_config_file(file, ini_line_options, true), cmd_vm);
   po::notify(cmd_vm);

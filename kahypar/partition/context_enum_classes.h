@@ -690,6 +690,19 @@ static LouvainEdgeWeight edgeWeightFromString(const std::string& type) {
   return LouvainEdgeWeight::uniform;
 }
 
+static FileLogLevel fileLogLevelFromString(std::string log_level) {
+  if (log_level == "km1-imbalance-target") {
+    return FileLogLevel::write_imbalance_km1_target;
+  } else if (log_level == "km1-imbalance") {
+    return FileLogLevel::write_imbalance_km1;
+  } if (log_level == "none") {
+    return FileLogLevel::no_file_logging;
+  }
+  LOG << "Illegal option:" << log_level;
+  exit(0);
+  return FileLogLevel::no_file_logging;
+}
+
 static Mode modeFromString(const std::string& mode) {
   if (mode == "recursive") {
     return Mode::recursive_bisection;
@@ -700,6 +713,7 @@ static Mode modeFromString(const std::string& mode) {
   exit(0);
   return Mode::direct_kway;
 }
+
 static FlowExecutionMode flowExecutionPolicyFromString(const std::string& mode) {
   if (mode == "constant") {
     return FlowExecutionMode::constant;

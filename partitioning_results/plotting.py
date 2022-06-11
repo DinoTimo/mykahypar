@@ -34,7 +34,7 @@ def showImbalance(fig, ax, imbpath, targetpath):
   if (num <= 0) : return
   ax.plot(floatify(targetImbalances), 'b', label='target imbalances')
   ax.plot(floatify(imbalances), 'g', label='actual imbalances')
-  ax.hlines(y=targetImbalances[num - 1], xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='epsilon')
+  ax.hlines(y=float(targetImbalances[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='epsilon')
   ax.legend()
   ax.set_title("Imbalance in form of heaviest block weight")
 
