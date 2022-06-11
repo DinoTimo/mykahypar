@@ -21,6 +21,7 @@ def readLines(path):
 #Expecting the following format: just one value per line, no comma
 def showKm1(fig, ax, km1path):
   lines = readLines(km1path)
+  if len(lines) == 0: return
   ax.set_title('(k - 1) goal - minimize')
   ax.plot(floatify(lines))
 
@@ -29,9 +30,10 @@ def showKm1(fig, ax, km1path):
 def showImbalance(fig, ax, imbpath, targetpath):
   imbalances = readLines(imbpath)
   targetImbalances = readLines(targetpath)
+  num = len(imbalances)
+  if (num <= 0) : return
   ax.plot(floatify(targetImbalances), 'b', label='target imbalances')
   ax.plot(floatify(imbalances), 'g', label='actual imbalances')
-  num = len(imbalances)
   ax.hlines(y=targetImbalances[num - 1], xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='epsilon')
   ax.legend()
   ax.set_title("Imbalance in form of heaviest block weight")

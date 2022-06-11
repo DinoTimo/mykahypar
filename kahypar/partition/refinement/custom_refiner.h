@@ -170,15 +170,15 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   bool isSatisfyingFlow(std::vector<HypernodeWeight> flow, HypernodeWeight source, HypernodeWeight sink, std::vector<HypernodeWeight> capacity) {
     ASSERT(flow.size() == _num_flow_nodes * _num_flow_nodes);
     for (int i = 0; i < _num_flow_nodes; i++) {
-      if (i != source && flow[source * _num_flow_nodes + i] < 0.9 * capacity[source * _num_flow_nodes + i]) {//TODO: MAGIC NUMBER
+      if (i != sink && i != source &&  flow[source * _num_flow_nodes + i] < 0.9 * capacity[source * _num_flow_nodes + i]) {//TODO: MAGIC NUMBER
         return false;
       }
-    }/*
-    for (int i = 0; i < num_flow_nodes; i++) {
-      if (flow[i * _num_flow_nodes + sink] < 0.5 * capacity[i * _num_flow_nodes + sink]) {//TODO: MAGIC NUMBER
+    }
+    for (int i = 0; i < _num_flow_nodes; i++) {
+      if (i != sink && i != source && flow.at(i * _num_flow_nodes + sink) < 0.5 * capacity.at(i * _num_flow_nodes + sink)) {//TODO: MAGIC NUMBER
         return false;
       }
-    }*/
+    }
     return true;
   }
   

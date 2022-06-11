@@ -90,6 +90,9 @@ class LoggerVoidify {
 template<typename Content>
 std::string joinVector(std::vector<Content> & vec, std::string prefix, std::string delim, std::string postfix) {
   std::string str;
+  if (vec.empty()) {
+    return "";
+  }
   str.append(prefix);
   unsigned long int index = 0;
   while (index < vec.size() - 1) {

@@ -433,7 +433,6 @@ static inline void writeFixedVertexFile(const Hypergraph& hypergraph, const std:
 }
 
 static inline void callPythonPlottingScript() {
-  LOG << "Called python plotting script";
   std::string filename = "../partitioning_results/plotting.py";
   std::string command = "python3 ";
   command += filename;
