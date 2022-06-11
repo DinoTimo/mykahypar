@@ -180,6 +180,12 @@ enum class EvoDecision : uint8_t {
   combine
 };
 
+enum class FileLogLevel : uint8_t {
+  no_file_logging,
+  write_imbalance_km1,
+  write_imbalance_km1_target
+};
+
 enum class FlowExecutionMode : uint8_t {
   constant,
   multilevel,
@@ -233,6 +239,16 @@ static std::ostream& operator<< (std::ostream& os, const EvoDecision& decision) 
       // omit default case to trigger compiler warning for missing cases
   }
   return os << static_cast<uint8_t>(decision);
+}
+
+static std::ostream& operator<< (std::ostream& os, const FileLogLevel& log_level) {
+  switch (log_level) {
+    case FileLogLevel::no_file_logging:  return os << "no file logging";
+    case FileLogLevel::write_imbalance_km1:  return os << "only write imbalance and km1 goal to files";
+    case FileLogLevel::write_imbalance_km1_target :  return os << "write imbalance, target imbalance and km1 goal to files";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(log_level);
 }
 
 static std::ostream& operator<< (std::ostream& os, const RatingPartitionPolicy& policy) {

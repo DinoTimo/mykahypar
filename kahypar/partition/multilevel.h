@@ -127,8 +127,7 @@ static inline void partition(Hypergraph& hypergraph,
 
   io::printLocalSearchResults(context, hypergraph);
 
-  if (context.local_search.algorithm == kahypar::RefinementAlgorithm::custom_kway_fm_km1) {
-    LOG << "Calling python plotting script";
+  if (context.logging.show_diagram) {
     io::callPythonPlottingScript();
   }
 }

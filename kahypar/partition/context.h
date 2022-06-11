@@ -130,6 +130,7 @@ struct RatingParameters {
   FixVertexContractionAcceptancePolicy fixed_vertex_acceptance_policy = FixVertexContractionAcceptancePolicy::UNDEFINED;
 };
 
+
 inline std::ostream& operator<< (std::ostream& str, const RatingParameters& params) {
   str << "  Rating Parameters:" << std::endl;
   str << "    Ignore Max Node Weight:           " << params.ignore_max_node_weight << std::endl;
@@ -423,6 +424,19 @@ inline std::ostream& operator<< (std::ostream& str, const EvolutionaryParameters
   return str;
 }
 
+struct FileLoggingParameters {
+  FileLogLevel file_log_level = FileLogLevel::no_file_logging; 
+  bool show_diagram = false;
+};
+
+inline std::ostream& operator<< (std::ostream& str, const FileLoggingParameters& params) {
+  str << "-------------------------------------------------------------------------------" << std::endl;
+  str << "  File Logging: " << params.file_log_level << std::endl;
+  str << "  Show Diagram: " << params.show_diagram << std::endl;
+  str << "-------------------------------------------------------------------------------" << std::endl;
+  return str;
+}
+
 class Context {
  public:
   using PartitioningStats = Stats<Context>;
@@ -433,6 +447,7 @@ class Context {
   InitialPartitioningParameters initial_partitioning { };
   LocalSearchParameters local_search { };
   EvolutionaryParameters evolutionary { };
+  FileLoggingParameters logging { };
   ContextType type = ContextType::main;
   mutable PartitioningStats stats;
   bool partition_evolutionary = false;
@@ -449,6 +464,7 @@ class Context {
     initial_partitioning(other.initial_partitioning),
     local_search(other.local_search),
     evolutionary(other.evolutionary),
+    logging(other.logging),
     type(other.type),
     stats(*this, &other.stats.topLevel()),
     partition_evolutionary(other.partition_evolutionary) { }
@@ -521,6 +537,7 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
       << context.coarsening
       << context.initial_partitioning
       << context.local_search
+      << context.logging
       << "-------------------------------------------------------------------------------"
       << std::endl;
   if (context.partition_evolutionary) {
