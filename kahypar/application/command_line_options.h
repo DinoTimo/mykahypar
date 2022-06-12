@@ -382,7 +382,10 @@ po::options_description createRefinementOptionsDescription(Context& context,
     "(infinity: -1)")
     ((initial_partitioning ? "i-r-fm-balance-convergence-speed" : "r-fm-balance-convergence-speed"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_speed : &context.local_search.fm.balance_convergence_speed))->value_name("<double>"),
-    "Parameter for how quickly the partition must fulfill the balance constraint");
+    "Parameter for how quickly the partition must fulfill the balance constraint")
+    ((initial_partitioning ? "i-r-fm-balance-convergence-time" : "r-fm-balance-convergence-time"),
+    po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_time : &context.local_search.fm.balance_convergence_time))->value_name("<double>"),
+    "Parameter for after how many steps the partition must fulfill the balance constraint");
   options.add(createFlowRefinementOptionsDescription(context, num_columns, initial_partitioning));
   options.add(createHyperFlowCutterRefinementOptionsDescription(context, num_columns, initial_partitioning));
   return options;

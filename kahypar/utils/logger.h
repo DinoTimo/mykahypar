@@ -87,8 +87,9 @@ class LoggerVoidify {
   void operator& (Logger&) { }
 };
 
+
 template<typename Content>
-std::string joinVector(std::vector<Content> & vec, std::string prefix, std::string delim, std::string postfix) {
+std::string joinVector(const std::vector<Content> vec, const std::string prefix, const std::string delim, const std::string postfix) {
   std::string str;
   if (vec.empty()) {
     return "";
@@ -105,12 +106,16 @@ std::string joinVector(std::vector<Content> & vec, std::string prefix, std::stri
   return str;
 }
 
-template <typename Content>
-void writeVectorToFile(std::vector<Content> vec, std::string fileName) {
+void writeToFile(const std::string str, const std::string fileName) {
   std::ofstream file;
   file.open(fileName);
-  file << joinVector(vec, "", "\n", "");
+  file << str;
   file.close();
+}
+
+template <typename Content>
+void writeVectorToFile(const std::vector<Content> vec, const std::string fileName) {
+  writeToFile(joinVector(vec, "", "\n", ""), fileName);
 }
 
 }  // namespace kahypar

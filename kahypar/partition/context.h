@@ -192,6 +192,7 @@ struct LocalSearchParameters {
     uint32_t max_number_of_fruitless_moves = std::numeric_limits<uint32_t>::max();
     double adaptive_stopping_alpha = std::numeric_limits<double>::max();
     double balance_convergence_speed = std::numeric_limits<double>::max();
+    double balance_convergence_time = 0;
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
   };
 
@@ -249,7 +250,8 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     }
     if (params.algorithm == RefinementAlgorithm::custom_kway_fm_km1) {
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
-      str << "    max_flow_improvement_iterations   " << params.flow.max_flow_improvement_iterations << std::endl;
+      str << "    balance convergence time:         " << params.flow.max_flow_improvement_iterations << std::endl;
+      str << "    max flow improvement iterations:  " << params.flow.max_flow_improvement_iterations << std::endl;
     }
   } else if (params.algorithm == RefinementAlgorithm::do_nothing) {
     str << "  no coarsening!  " << std::endl;

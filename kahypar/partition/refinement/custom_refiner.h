@@ -136,8 +136,11 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
 
   HypernodeWeight currentBlockWeightDelta() {
     uint16_t k = _context.partition.k;
-    uint16_t current_step = _hg.currentNumNodes() - k;
     uint16_t total_num_steps = _hg.initialNumNodes() - k;
+    uint16_t current_step = _hg.currentNumNodes() - k + (_context.local_search.fm.balance_convergence_time * static_cast<double>(total_num_steps));
+    if (current_step >= total_num_steps) {
+      current_step = total_num_steps;
+    }
     uint16_t step_diff = total_num_steps - current_step;
     return static_cast<HypernodeWeight>(static_cast<double>(idealBlockWeight())
       * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, _context.local_search.fm.balance_convergence_speed)
@@ -355,7 +358,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
-                                      moveFeasibilityByFlow(from_part, to_part) >= _hg.nodeWeight(max_gain_node);
+                                      2 * moveFeasibilityByFlow(from_part, to_part) >= _hg.nodeWeight(max_gain_node);
       const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      

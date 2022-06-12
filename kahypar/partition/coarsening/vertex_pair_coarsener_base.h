@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 #include "kahypar/datastructure/binary_heap.h"
 #include "kahypar/definitions.h"
@@ -157,10 +158,12 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
       writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
       writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
+      writeToFile(generalInfo(), "../partitioning_results/data/info.txt");
     } else if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
       writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
       writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
       writeVectorToFile(_target_imbalances, "../partitioning_results/data/target_imbalances.txt");
+      writeToFile(generalInfo(), "../partitioning_results/data/info.txt");
     }
     bool improvement_found = false;
     switch (_context.partition.objective) {
@@ -187,6 +190,17 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     }
 
     return improvement_found;
+  }
+
+  std::string generalInfo() const {
+    std::string infos;
+    std::string path = _context.partition.graph_filename;
+    infos.append("graph file: " + path.substr(path.find_last_of("/") + 1));
+    infos.append("k = " + std::to_string(_context.partition.k));
+    infos.append("e = " + std::to_string(_context.partition.epsilon));
+    infos.append("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
+    infos.append("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
+    return infos;
   }
 
   void uncontract(UncontractionGainChanges& changes) {

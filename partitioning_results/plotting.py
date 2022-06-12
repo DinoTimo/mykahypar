@@ -7,9 +7,10 @@ def main():
   path = "/home/timo/Coding/mykahypar/partitioning_results/data/"
   km1path = path + "km1.txt"
   imbpath = path + "imbalances.txt"
+  infopath = path + "info.txt"
   targetpath = path + "target_imbalances.txt"
   fig, (ax1, ax2) = plt.subplots(2)
-  showImbalance(fig, ax1, imbpath, targetpath)
+  showImbalance(fig, ax1, imbpath, targetpath, infopath)
   showKm1(fig, ax2, km1path)
   plt.show()
 
@@ -27,16 +28,20 @@ def showKm1(fig, ax, km1path):
 
 #Expecting the following format for imbalance.txt: one value per line
 #Expecting the following format for target_imbalances.txt: one value per line
-def showImbalance(fig, ax, imbpath, targetpath):
+def showImbalance(fig, ax, imbpath, targetpath, infopath):
   imbalances = readLines(imbpath)
   targetImbalances = readLines(targetpath)
   num = len(imbalances)
   if (num <= 0) : return
-  ax.plot(floatify(targetImbalances), 'b', label='target imbalances')
   ax.plot(floatify(imbalances), 'g', label='actual imbalances')
-  ax.hlines(y=float(targetImbalances[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='epsilon')
+  if (len(targetImbalances) > 0):
+    ax.plot(floatify(targetImbalances), 'b', label='target imbalances')
+    ax.hlines(y=float(targetImbalances[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='final target weight')
   ax.legend()
-  ax.set_title("Imbalance in form of heaviest block weight")
+  infoLines = readLines(infopath)
+  ax.set_title(' - '.join(infoLines))
+
+
 
 def floatify(arr):
   return [None if v == '' else float(v) for v in arr]
