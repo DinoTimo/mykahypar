@@ -151,6 +151,12 @@ enum class RefinementStoppingRule : uint8_t {
   UNDEFINED
 };
 
+enum class BalancingFlowModel : uint8_t {
+  infinity_source,
+  infinity_edges,
+  UNDEFINED
+};
+
 enum class Objective : uint8_t {
   cut,
   km1,
@@ -445,6 +451,16 @@ static std::ostream& operator<< (std::ostream& os, const RefinementStoppingRule&
   return os << static_cast<uint8_t>(rule);
 }
 
+static std::ostream& operator<< (std::ostream& os, const BalancingFlowModel& model) {
+  switch (model) {
+    case BalancingFlowModel::infinity_edges : return os << "infinity_edges";
+    case BalancingFlowModel::infinity_source : return os << "infinity_source";
+    case BalancingFlowModel::UNDEFINED: return os << "UNDEFINED";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(model);
+}
+
 static std::ostream& operator<< (std::ostream& os, const FlowExecutionMode& mode) {
   switch (mode) {
     case FlowExecutionMode::constant: return os << "constant";
@@ -583,6 +599,17 @@ static RefinementStoppingRule stoppingRuleFromString(const std::string& rule) {
   LOG << "No valid stopping rule for FM.";
   exit(0);
   return RefinementStoppingRule::simple;
+}
+
+static BalancingFlowModel balancingFlowModelFromString(const std::string& model) {
+  if (model == "infinity_source") {
+    return BalancingFlowModel::infinity_source;
+  } else if (model == "infinity_edge") {
+    return BalancingFlowModel::infinity_edges;
+  }
+  LOG << "No valid flow model for flow balancing.";
+  exit(0);
+  return BalancingFlowModel::UNDEFINED;
 }
 
 static CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type) {

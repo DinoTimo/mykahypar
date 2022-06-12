@@ -192,8 +192,9 @@ struct LocalSearchParameters {
     uint32_t max_number_of_fruitless_moves = std::numeric_limits<uint32_t>::max();
     double adaptive_stopping_alpha = std::numeric_limits<double>::max();
     double balance_convergence_speed = std::numeric_limits<double>::max();
-    double balance_convergence_time = 0;
+    double balance_convergence_time = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
+    BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
   };
 
   struct Flow {
@@ -249,6 +250,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
       str << "    beta:                             " << params.flow.beta << std::endl;
     }
     if (params.algorithm == RefinementAlgorithm::custom_kway_fm_km1) {
+      str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.flow.max_flow_improvement_iterations << std::endl;
       str << "    max flow improvement iterations:  " << params.flow.max_flow_improvement_iterations << std::endl;

@@ -373,6 +373,16 @@ po::options_description createRefinementOptionsDescription(Context& context,
     "Stopping Rule for Local Search: \n"
     " - adaptive_opt: ALENEX'17 adaptive stopping rule \n"
     " - simple:       ALENEX'16 threshold based on r-fm-stop-i")
+    ((initial_partitioning ? "i-r-fm-balancing-flow-model" : "r-fm-balancing-flow-model"),
+    po::value<std::string>()->value_name("<string>")->notifier(
+      [&context, initial_partitioning](const std::string& model) {
+      if (initial_partitioning) {
+        context.initial_partitioning.local_search.fm.flow_model = kahypar::balancingFlowModelFromString(model);
+      } else {
+        context.local_search.fm.flow_model = kahypar::balancingFlowModelFromString(model);
+      }
+    }),
+    "Balancing flow for refinement")
     ((initial_partitioning ? "i-r-fm-stop-i" : "r-fm-stop-i"),
     po::value<uint32_t>((initial_partitioning ? &context.initial_partitioning.local_search.fm.max_number_of_fruitless_moves : &context.local_search.fm.max_number_of_fruitless_moves))->value_name("<uint32_t>"),
     "Max. # fruitless moves before stopping local search using simple stopping rule")
