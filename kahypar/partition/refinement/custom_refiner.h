@@ -195,31 +195,38 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
       PartitionID heavierBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.first : edge.second;
       PartitionID lighterBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.second : edge.first;
-      HypernodeWeight heavierBlockWeight = _hg.partWeight(heavierBlockID);
-      HypernodeWeight lighterBlockWeight = _hg.partWeight(lighterBlockID);
-      HypernodeWeight idealWeight = idealBlockWeight();
-      HypernodeWeight overload = heavierBlockWeight - idealWeight;
-      HypernodeWeight underload = idealWeight - lighterBlockWeight;
-      if (overload < 0 || underload < 0) {
-        capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
-        continue;
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::infinity_source) {
+        HypernodeWeight heavierBlockWeight = _hg.partWeight(heavierBlockID);
+        HypernodeWeight lighterBlockWeight = _hg.partWeight(lighterBlockID);
+        HypernodeWeight idealWeight = idealBlockWeight();
+        HypernodeWeight overload = heavierBlockWeight - idealWeight;
+        HypernodeWeight underload = idealWeight - lighterBlockWeight;
+        if (overload < 0 || underload < 0) {
+          capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+          continue;
+        }
+        HypernodeWeight maxEdgeCapacity = std::min(overload, underload);
+        capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+      } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
+        capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::numeric_limits<HypernodeWeight>::max();
       }
-      HypernodeWeight maxEdgeCapacity = std::min(overload, underload);
-      capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
-      //capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::numeric_limits<HypernodeWeight>::max();
     }
-    //this is deemed unnecessary for now. And will be ignored by ignoring node capacities in the flow solver later on.
-    /*for (PartitionID node = 0; node < _context.partition.k; node++) {
-      capacity_matrix[node * _num_flow_nodes + node] = calculateQuotientNodeCapacity(node);
-    }*/
     
     // Add edges between source and overloaded blocks and sink and underloaded blocks
     for (PartitionID blockNode = 0; blockNode < _context.partition.k; blockNode++) {
       if (isOverloadedBlock(blockNode)) {
-        capacity_matrix[source * _num_flow_nodes + blockNode] = std::numeric_limits<HypernodeWeight>::max(); //_hg.partWeight(blockNode) - idealBlockWeight();
+        if (_context.local_search.fm.flow_model == BalancingFlowModel::infinity_source) {
+          capacity_matrix[source * _num_flow_nodes + blockNode] = std::numeric_limits<HypernodeWeight>::max();
+        } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
+          capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight();
+        }
       }
       if (isUnderloadedBlock(blockNode)) {
-        capacity_matrix[blockNode * _num_flow_nodes + sink] = std::numeric_limits<HypernodeWeight>::max(); //idealBlockWeight() - _hg.partWeight(blockNode);
+        if (_context.local_search.fm.flow_model == BalancingFlowModel::infinity_source) {
+          capacity_matrix[blockNode * _num_flow_nodes + sink] = std::numeric_limits<HypernodeWeight>::max();
+        } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
+          capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
+        }
       }
     }
     return capacity_matrix;
