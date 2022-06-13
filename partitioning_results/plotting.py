@@ -39,7 +39,7 @@ def showImbalance(fig, ax, imbpath, targetpath, infopath):
     ax.hlines(y=float(targetImbalances[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='final target weight')
   ax.legend()
   infoLines = readLines(infopath)
-  ax.set_title(' - '.join(infoLines))
+  ax.set_title('       '.join(infoLines))
 
 
 

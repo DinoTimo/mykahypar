@@ -193,14 +193,17 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
   }
 
   std::string generalInfo() const {
-    std::string infos;
+    std::vector<std::string> infos;
     std::string path = _context.partition.graph_filename;
-    infos.append("graph file: " + path.substr(path.find_last_of("/") + 1));
-    infos.append("k = " + std::to_string(_context.partition.k));
-    infos.append("e = " + std::to_string(_context.partition.epsilon));
-    infos.append("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
-    infos.append("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
-    return infos;
+    infos.push_back("graph file: " + path.substr(path.find_last_of("/") + 1));
+    infos.push_back("k = " + std::to_string(_context.partition.k));
+    infos.push_back("e = " + std::to_string(_context.partition.epsilon));
+    BalancingFlowModel model = _context.local_search.fm.flow_model;
+    std::string model_string = (model == BalancingFlowModel::infinity_edges ? "infinity_edges" : (model== BalancingFlowModel::infinity_source ? "infinity_source" : "UNDEFINED"));
+    infos.push_back("flow_model = " + model_string);
+    infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
+    infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
+    return joinVector(infos, "", "\n", "");
   }
 
   void uncontract(UncontractionGainChanges& changes) {
