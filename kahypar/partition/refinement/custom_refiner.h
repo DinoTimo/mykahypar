@@ -248,8 +248,9 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     return _hg.partWeight(block) < idealBlockWeight();
   }
 
-  HypernodeWeight moveFeasibilityByFlow(PartitionID from, PartitionID to) {
-    return _flow_matrix[from * _num_flow_nodes + to];
+  bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
+    return _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2 
+        && _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + from];
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -365,7 +366,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
-                                      2 * moveFeasibilityByFlow(from_part, to_part) >= _hg.nodeWeight(max_gain_node);
+                                      moveFeasibilityByFlow(from_part, to_part, max_gain_node);
       const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
@@ -378,6 +379,8 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
         Base::moveHypernode(max_gain_node, from_part, to_part);
         _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(max_gain_node);
         _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(max_gain_node);
+        _flow_matrix[to_part * _num_flow_nodes + to_part] += _hg.nodeWeight(max_gain_node);
+        _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(max_gain_node);
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],
