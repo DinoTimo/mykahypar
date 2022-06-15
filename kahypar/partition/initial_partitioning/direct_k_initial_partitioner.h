@@ -29,11 +29,11 @@ class DirectKInitialPartitioner : public IInitialPartitioner,
       for (PartitionID k = 0; k < _context.partition.k; k++) {
         _block_queue.push(k, 0);
       }
-      for (const auto hn : _hg.nodes()) {
+      for (const HypernodeID hn : _descending_nodes) {
         if (_hg.nodeIsEnabled(hn)) {
           PartitionID lightestBlock = _block_queue.top();
           _hg.setNodePart(hn, lightestBlock);
-          _block_queue.increaseKey(lightestBlock, _hg.nodeWeight(hn));
+          _block_queue.increaseKeyBy(lightestBlock, _hg.nodeWeight(hn));
         }
       }
     }
