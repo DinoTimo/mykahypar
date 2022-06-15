@@ -215,18 +215,10 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     // Add edges between source and overloaded blocks and sink and underloaded blocks
     for (PartitionID blockNode = 0; blockNode < _context.partition.k; blockNode++) {
       if (isOverloadedBlock(blockNode)) {
-        if (_context.local_search.fm.flow_model == BalancingFlowModel::infinity_source) {
-          capacity_matrix[source * _num_flow_nodes + blockNode] = std::numeric_limits<HypernodeWeight>::max();
-        } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
-          capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight();
-        }
+        capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight(); 
       }
       if (isUnderloadedBlock(blockNode)) {
-        if (_context.local_search.fm.flow_model == BalancingFlowModel::infinity_source) {
-          capacity_matrix[blockNode * _num_flow_nodes + sink] = std::numeric_limits<HypernodeWeight>::max();
-        } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
-          capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
-        }
+        capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
       }
     }
     return capacity_matrix;
@@ -249,8 +241,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   }
 
   bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
-    return _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2 
-        && _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + from];
+    return _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2;
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -372,15 +363,14 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
       if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
         if (_hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node)) {
-          DBG << max_gain_node << " is tried to be moved from " << from_part << " to " << to_part << " at step " << current_step;
-          DBG << "is balanced_and_keeps_balance: " << balanced_and_keeps_balance;
-          DBG << "is imbalanced_but_improves_balance: " << imbalanced_but_improves_balance;
+          LOG << max_gain_node << " is tried to be moved from " << from_part << " to " << to_part << " at step " << current_step;
+          LOG << "is balanced_and_keeps_balance: " << balanced_and_keeps_balance;
+          LOG << "is imbalanced_but_improves_balance: " << imbalanced_but_improves_balance;
         }
         Base::moveHypernode(max_gain_node, from_part, to_part);
         _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(max_gain_node);
         _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(max_gain_node);
-        _flow_matrix[to_part * _num_flow_nodes + to_part] += _hg.nodeWeight(max_gain_node);
-        _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(max_gain_node);
+        
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],
