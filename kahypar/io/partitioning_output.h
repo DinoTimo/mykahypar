@@ -166,6 +166,7 @@ inline void printHypergraphInfo(const Hypergraph& hypergraph, const std::string&
 
   LOG << "Hypergraph Information";
   LOG << "Name :" << name;
+  LOG << "Connected Components :" << metrics::amountConnectedComponents(hypergraph);
   LOG << "Type:" << hypergraph.typeAsString();
   LOG << "# HNs :" << hypergraph.currentNumNodes()
       << "# HEs :" << hypergraph.currentNumEdges()

@@ -158,6 +158,34 @@ static inline HyperedgeWeight objective(const Hypergraph& hg, const Objective& o
 // Hide original imbalance definition that assumes Lmax0=Lmax1=Lmax
 // This definition should only be used in assertions.
 namespace internal {
+template<typename Content>
+inline int findElem(std::vector<Content> vec, Content elem) {
+  int index = -1;
+  for (size_t i = 0; i < vec.size(); i++) {
+    if (vec[i] == elem) {
+      index = i;
+      break;
+    }
+  }
+  return index;
+}
+
+inline void performBreadthFirstSearch(std::vector<HypernodeID> & notVisitedNodes, const Hypergraph & hg, const HypernodeID startingNode) {
+  for (HyperedgeID edge : hg.incidentEdges(startingNode)) {
+    for (HypernodeID node : hg.pins(edge)) {
+      if (node == startingNode) {
+        continue;
+      }
+      int index = findElem(notVisitedNodes, node);
+      if (index < 0) {
+        continue;
+      }
+      notVisitedNodes.erase(notVisitedNodes.begin() + index);
+      performBreadthFirstSearch(notVisitedNodes, hg, node);
+    }
+  }
+}
+
 inline double imbalance(const Hypergraph& hypergraph, const PartitionID k) {
   HypernodeWeight max_weight = hypergraph.partWeight(0);
   for (PartitionID i = 1; i != k; ++i) {
@@ -199,6 +227,22 @@ static inline double imbalance(const Hypergraph& hypergraph, const Context& cont
          "Incorrect Imbalance:" << (max_balance - 1.0) << "!="
                                 << V(internal::imbalance(hypergraph, context.partition.k)));
   return max_balance - 1.0;
+}
+
+static inline size_t amountConnectedComponents(const Hypergraph & hg) {
+  std::vector<HypernodeID> nodes(hg.nodes().first, hg.nodes().second);
+  if (nodes.empty()) {
+    return 0;
+  }
+  size_t count = 0;
+  HypernodeID startingNode;
+  while (!nodes.empty()) {
+    startingNode = nodes.back();
+    nodes.pop_back();
+    internal::performBreadthFirstSearch(nodes, hg, startingNode);
+    count++;
+  }
+  return count;
 }
 
 inline double imbalanceFixedVertices(const Hypergraph& hypergraph, const PartitionID k) {
