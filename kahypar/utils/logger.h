@@ -89,7 +89,7 @@ class LoggerVoidify {
 };
 
 
-std::string joinVector(const std::vector<std::string> vec, const std::string prefix, const std::string delim, const std::string postfix) {
+inline std::string joinVector(const std::vector<std::string> vec, const std::string prefix, const std::string delim, const std::string postfix) {
   std::string str;
   if (vec.empty()) {
     return "";
@@ -108,7 +108,7 @@ std::string joinVector(const std::vector<std::string> vec, const std::string pre
 
 
 template<typename Content>
-std::string joinVector(const std::vector<Content> vec, const std::string prefix, const std::string delim, const std::string postfix) {
+inline std::string joinVector(const std::vector<Content> vec, const std::string prefix, const std::string delim, const std::string postfix) {
   std::vector<std::string> stringVec;
   std::for_each(vec.begin(), vec.end(), [&stringVec](Content elem) {
     stringVec.push_back(std::to_string(elem));
@@ -116,7 +116,7 @@ std::string joinVector(const std::vector<Content> vec, const std::string prefix,
   return joinVector(stringVec, prefix, delim, postfix);
 }
 
-void writeToFile(const std::string str, const std::string fileName) {
+inline void writeToFile(const std::string str, const std::string fileName) {
   std::ofstream file;
   file.open(fileName);
   file << str;
@@ -124,7 +124,7 @@ void writeToFile(const std::string str, const std::string fileName) {
 }
 
 template <typename Content>
-void writeVectorToFile(const std::vector<Content> vec, const std::string fileName) {
+inline void writeVectorToFile(const std::vector<Content> vec, const std::string fileName) {
   writeToFile(joinVector(vec, "", "\n", ""), fileName);
 }
 
