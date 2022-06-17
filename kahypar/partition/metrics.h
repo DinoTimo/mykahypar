@@ -170,18 +170,14 @@ inline int findElem(std::vector<Content> vec, Content elem) {
   return index;
 }
 
-inline void performBreadthFirstSearch(std::vector<HypernodeID> & notVisitedNodes, const Hypergraph & hg, const HypernodeID startingNode) {
+inline void performBreadthFirstSearch(std::vector<HypernodeID> & nodes, const Hypergraph & hg, const HypernodeID startingNode, std::vector<bool> & activated) {
   for (HyperedgeID edge : hg.incidentEdges(startingNode)) {
     for (HypernodeID node : hg.pins(edge)) {
-      if (node == startingNode) {
+      if (node == startingNode || activated[node] == false) {
         continue;
       }
-      int index = findElem(notVisitedNodes, node);
-      if (index < 0) {
-        continue;
-      }
-      notVisitedNodes.erase(notVisitedNodes.begin() + index);
-      performBreadthFirstSearch(notVisitedNodes, hg, node);
+      activated[node] = false;
+      performBreadthFirstSearch(nodes, hg, node, activated);
     }
   }
 }
@@ -231,15 +227,19 @@ static inline double imbalance(const Hypergraph& hypergraph, const Context& cont
 
 static inline size_t amountConnectedComponents(const Hypergraph & hg) {
   std::vector<HypernodeID> nodes(hg.nodes().first, hg.nodes().second);
+  std::vector<bool> activated(nodes.size(), true);
   if (nodes.empty()) {
     return 0;
   }
   size_t count = 0;
   HypernodeID startingNode;
-  while (!nodes.empty()) {
-    startingNode = nodes.back();
-    nodes.pop_back();
-    internal::performBreadthFirstSearch(nodes, hg, startingNode);
+  for (size_t i = 0; i < nodes.size(); i++) {
+    if (!activated[i]) {
+      continue;
+    }
+    startingNode = nodes[i];
+    activated[i] = false;
+    internal::performBreadthFirstSearch(nodes, hg, startingNode, activated);
     count++;
   }
   return count;
