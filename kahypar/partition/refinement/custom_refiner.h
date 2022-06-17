@@ -195,7 +195,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
       PartitionID heavierBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.first : edge.second;
       PartitionID lighterBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.second : edge.first;
-      if (_context.local_search.fm.flow_model == BalancingFlowModel::infinity_source) {
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::finite_edges) {
         HypernodeWeight heavierBlockWeight = _hg.partWeight(heavierBlockID);
         HypernodeWeight lighterBlockWeight = _hg.partWeight(lighterBlockID);
         HypernodeWeight idealWeight = idealBlockWeight();

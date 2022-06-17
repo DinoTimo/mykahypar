@@ -152,7 +152,7 @@ enum class RefinementStoppingRule : uint8_t {
 };
 
 enum class BalancingFlowModel : uint8_t {
-  infinity_source,
+  finite_edges,
   infinity_edges,
   UNDEFINED
 };
@@ -454,7 +454,7 @@ static std::ostream& operator<< (std::ostream& os, const RefinementStoppingRule&
 static std::ostream& operator<< (std::ostream& os, const BalancingFlowModel& model) {
   switch (model) {
     case BalancingFlowModel::infinity_edges : return os << "infinity_edges";
-    case BalancingFlowModel::infinity_source : return os << "infinity_source";
+    case BalancingFlowModel::finite_edges : return os << "finite_edges";
     case BalancingFlowModel::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
   }
@@ -602,8 +602,8 @@ static RefinementStoppingRule stoppingRuleFromString(const std::string& rule) {
 }
 
 static BalancingFlowModel balancingFlowModelFromString(const std::string& model) {
-  if (model == "infinity_source") {
-    return BalancingFlowModel::infinity_source;
+  if (model == "finite_edges") {
+    return BalancingFlowModel::finite_edges;
   } else if (model == "infinity_edge") {
     return BalancingFlowModel::infinity_edges;
   }
