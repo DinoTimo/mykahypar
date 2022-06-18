@@ -186,7 +186,9 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   }
   
   std::vector<PartitionID> calculateCapacityMatrix() {
-    initQuotientEdgeCapacities();
+    if (_context.local_search.fm.flow_model == BalancingFlowModel::finite_edges) {
+      initQuotientEdgeCapacities();
+    }
     PartitionID source = _context.partition.k;
     PartitionID sink = source + 1;
     std::vector<HypernodeWeight> capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0);
@@ -209,6 +211,15 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
         capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
       } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
         capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::numeric_limits<HypernodeWeight>::max();
+      }
+    }
+
+    for (int i = 0; i < source; i++) {
+      for (int j = i + 1; j < source; j++) {
+        HypernodeWeight & capacity = capacity_matrix[i * _num_flow_nodes + j]; 
+        capacity = capacity > 0 ? capacity : _hg.totalWeight() / (source);
+        capacity = capacity_matrix[j * _num_flow_nodes + i]; 
+        capacity = capacity > 0 ? capacity : _hg.totalWeight() / (source);
       }
     }
     
