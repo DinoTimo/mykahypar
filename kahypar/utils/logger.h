@@ -128,4 +128,11 @@ inline void writeVectorToFile(const std::vector<Content> vec, const std::string 
   writeToFile(joinVector(vec, "", "\n", ""), fileName);
 }
 
+inline void addToFile(const std::string newContent, const std::string filePath) {
+  std::ofstream file;
+  file.open(filePath, std::ios::app);
+  file << newContent;
+  file.close();
+}
+
 }  // namespace kahypar

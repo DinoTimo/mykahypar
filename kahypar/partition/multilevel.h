@@ -31,6 +31,7 @@
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/utils/timer.h"
+#include "kahypar/utils/logger.h"
 
 namespace kahypar {
 namespace multilevel {
@@ -129,6 +130,12 @@ static inline void partition(Hypergraph& hypergraph,
 
   if (context.logging.show_diagram) {
     io::callPythonPlottingScript();
+    if (context.local_search.algorithm != RefinementAlgorithm::custom_kway_fm_km1) {
+      std::string path = context.partition.graph_filename;
+      std::string graph_name = path.substr(path.find_last_of("/") + 1);
+      std::string final_kahypar_km1 = std::to_string(metrics::km1(hypergraph));
+      addToFile("../partitioning_results/data/other_results.txt", graph_name + " " + final_kahypar_km1);
+    }
   }
 }
 
