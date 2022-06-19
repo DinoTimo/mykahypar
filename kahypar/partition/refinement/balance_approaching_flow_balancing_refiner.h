@@ -169,21 +169,6 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
       }
     }
   }
-
-  bool isSatisfyingFlow(std::vector<HypernodeWeight> flow, HypernodeWeight source, HypernodeWeight sink, std::vector<HypernodeWeight> capacity) {
-    ASSERT(flow.size() == _num_flow_nodes * _num_flow_nodes);
-    for (int i = 0; i < _num_flow_nodes; i++) {
-      if (i != sink && i != source &&  flow[source * _num_flow_nodes + i] < 0.9 * capacity[source * _num_flow_nodes + i]) {//TODO: MAGIC NUMBER
-        return false;
-      }
-    }
-    for (int i = 0; i < _num_flow_nodes; i++) {
-      if (i != sink && i != source && flow.at(i * _num_flow_nodes + sink) < 0.5 * capacity.at(i * _num_flow_nodes + sink)) {//TODO: MAGIC NUMBER
-        return false;
-      }
-    }
-    return true;
-  }
   
   std::vector<PartitionID> calculateCapacityMatrix() {
     if (_context.local_search.fm.flow_model == BalancingFlowModel::finite_edges) {
@@ -294,21 +279,6 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     std::vector<HypernodeWeight> capacity_matrix = calculateCapacityMatrix();
     std::vector<HypernodeWeight> original_capacity_matrix = capacity_matrix;
     _flow_matrix = _flow_solver.solveFlow(capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
-    size_t current_iter = 0;
-    while (!isSatisfyingFlow(_flow_matrix, _context.partition.k, _context.partition.k + 1, original_capacity_matrix)
-          && current_iter < _context.local_search.flow.max_flow_improvement_iterations) {
-      for (HypernodeWeight& nodeWeight : capacity_matrix) {
-        HypernodeWeight limit = std::numeric_limits<HypernodeWeight>::max() / 2;
-        if (nodeWeight < limit) {
-          nodeWeight *= 2;
-        }
-      }
-      _flow_matrix = _flow_solver.solveFlow(capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
-      current_iter++;
-    }
-    if (current_iter >= _context.local_search.flow.max_flow_improvement_iterations) {
-      DBG << "Flow Calculation cancelled after " + std::to_string(current_iter) + " tries";
-    }
 
     uint16_t k = _context.partition.k;
     uint16_t current_step = _hg.currentNumNodes() - k;
