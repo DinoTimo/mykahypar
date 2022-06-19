@@ -200,9 +200,11 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     infos.push_back("e = " + std::to_string(_context.partition.epsilon));
     BalancingFlowModel model = _context.local_search.fm.flow_model;
     std::string model_string = (model == BalancingFlowModel::infinity_edges ? "infinity_edges" : (model== BalancingFlowModel::finite_edges ? "finite_edges" : "UNDEFINED"));
-    infos.push_back("flow_model = " + model_string);
-    infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
-    infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
+    if (model != BalancingFlowModel::UNDEFINED) {
+      infos.push_back("flow_model = " + model_string);
+      infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
+      infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
+    }
     return joinVector(infos, "", "\n", "");
   }
 

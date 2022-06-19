@@ -225,7 +225,15 @@ static inline double imbalance(const Hypergraph& hypergraph, const Context& cont
   return max_balance - 1.0;
 }
 
+
+//This only works when the hypergraph is not contracted at all
 static inline size_t amountConnectedComponents(const Hypergraph & hg) {
+  ASSERT([&]() {
+      for (HypernodeID hn : hg.nodes()) {
+        ASSERT(hg.nodeIsEnabled(hn));
+      }
+      return true;
+    } (), "Error in locking of he/parts!");
   std::vector<HypernodeID> nodes(hg.nodes().first, hg.nodes().second);
   std::vector<bool> activated(nodes.size(), true);
   if (nodes.empty()) {
