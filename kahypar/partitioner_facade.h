@@ -73,7 +73,7 @@ class PartitionerFacade {
 
     if (context.logging.show_diagram) {
       io::callPythonPlottingScript();
-      if (context.local_search.algorithm != RefinementAlgorithm::custom_kway_fm_km1) {
+      if (context.local_search.algorithm != RefinementAlgorithm::balance_approaching_kway_fm_km1) {
         std::string path = context.partition.graph_filename;
         std::string graph_name = path.substr(path.find_last_of("/") + 1);
         std::string final_kahypar_km1 = std::to_string(metrics::km1(hypergraph));

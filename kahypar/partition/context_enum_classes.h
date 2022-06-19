@@ -102,7 +102,7 @@ enum class RefinementAlgorithm : uint8_t {
   twoway_fm,
   kway_fm,
   kway_fm_km1,
-  custom_kway_fm_km1,
+  balance_approaching_kway_fm_km1,
   twoway_fm_hyperflow_cutter,
   twoway_hyperflow_cutter,
   kway_hyperflow_cutter,
@@ -393,7 +393,7 @@ static std::ostream& operator<< (std::ostream& os, const RefinementAlgorithm& al
     case RefinementAlgorithm::twoway_fm: return os << "twoway_fm";
     case RefinementAlgorithm::kway_fm: return os << "kway_fm";
     case RefinementAlgorithm::kway_fm_km1: return os << "kway_fm_km1";
-    case RefinementAlgorithm::custom_kway_fm_km1: return os << "custom_kway_fm_km1";
+    case RefinementAlgorithm::balance_approaching_kway_fm_km1: return os << "balance_approaching_kway_fm_km1";
     case RefinementAlgorithm::twoway_hyperflow_cutter: return os << "twoway_hyperflow_cutter";
     case RefinementAlgorithm::twoway_fm_hyperflow_cutter: return os << "twoway_fm_hyperflow_cutter";
     case RefinementAlgorithm::kway_hyperflow_cutter: return os << "kway_hyperflow_cutter";
@@ -644,8 +644,8 @@ static RefinementAlgorithm refinementAlgorithmFromString(const std::string& type
     return RefinementAlgorithm::twoway_fm_hyperflow_cutter;
   } else if (type == "kway_fm_hyperflow_cutter_km1") {
     return RefinementAlgorithm::kway_fm_hyperflow_cutter_km1;
-  } else if (type == "custom_kway_fm_km1") {
-    return RefinementAlgorithm::custom_kway_fm_km1;
+  } else if (type == "balance_approaching_kway_fm_km1") {
+    return RefinementAlgorithm::balance_approaching_kway_fm_km1;
   } else if (type == "do_nothing") {
     return RefinementAlgorithm::do_nothing;
   }

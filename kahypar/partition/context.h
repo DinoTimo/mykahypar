@@ -226,7 +226,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
-      params.algorithm == RefinementAlgorithm::custom_kway_fm_km1 ||
+      params.algorithm == RefinementAlgorithm::balance_approaching_kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -240,7 +240,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
-      params.algorithm == RefinementAlgorithm::custom_kway_fm_km1 ||
+      params.algorithm == RefinementAlgorithm::balance_approaching_kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -249,7 +249,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     if (params.flow.execution_policy == FlowExecutionMode::constant) {
       str << "    beta:                             " << params.flow.beta << std::endl;
     }
-    if (params.algorithm == RefinementAlgorithm::custom_kway_fm_km1) {
+    if (params.algorithm == RefinementAlgorithm::balance_approaching_kway_fm_km1) {
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.flow.max_flow_improvement_iterations << std::endl;
@@ -554,7 +554,7 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
 static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::kway_fm ||
       algo == RefinementAlgorithm::kway_fm_km1 ||
-      algo == RefinementAlgorithm::custom_kway_fm_km1 ||
+      algo == RefinementAlgorithm::balance_approaching_kway_fm_km1 ||
       algo == RefinementAlgorithm::kway_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1) {

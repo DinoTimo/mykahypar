@@ -50,18 +50,18 @@
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
-class CustomKWayKMinusOneRefiner final : public IRefiner,
-                                   private FMRefinerBase<RollbackInfo, CustomKWayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy> >{
+class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
+                                   private FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy> >{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
   static constexpr HypernodeID hn_to_debug = 5589;
 
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, CustomKWayKMinusOneRefiner<StoppingPolicy,
+  using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
                                                                 FMImprovementPolicy> >;
 
-  friend class FMRefinerBase<RollbackInfo, CustomKWayKMinusOneRefiner<StoppingPolicy,
+  friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -83,7 +83,7 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
   };
 
  public:
-  CustomKWayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
+  BalanceApproachingKwayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
     Base(hypergraph, context),
     _tmp_gains(_context.partition.k, 0),
     _new_adjacent_part(_hg.initialNumNodes(), Hypergraph::kInvalidPartition),
@@ -96,13 +96,13 @@ class CustomKWayKMinusOneRefiner final : public IRefiner,
     _quotient_edge_capacities(_context.partition.k * _context.partition.k, 0),
     _vertex_block_pair_bitvector(_hg.initialNumNodes() * _context.partition.k, false) { }
 
-  ~CustomKWayKMinusOneRefiner() override = default;
+  ~BalanceApproachingKwayKMinusOneRefiner() override = default;
 
-  CustomKWayKMinusOneRefiner(const CustomKWayKMinusOneRefiner&) = delete;
-  CustomKWayKMinusOneRefiner& operator= (const CustomKWayKMinusOneRefiner&) = delete;
+  BalanceApproachingKwayKMinusOneRefiner(const BalanceApproachingKwayKMinusOneRefiner&) = delete;
+  BalanceApproachingKwayKMinusOneRefiner& operator= (const BalanceApproachingKwayKMinusOneRefiner&) = delete;
 
-  CustomKWayKMinusOneRefiner(CustomKWayKMinusOneRefiner&&) = delete;
-  CustomKWayKMinusOneRefiner& operator= (CustomKWayKMinusOneRefiner&&) = delete;
+  BalanceApproachingKwayKMinusOneRefiner(BalanceApproachingKwayKMinusOneRefiner&&) = delete;
+  BalanceApproachingKwayKMinusOneRefiner& operator= (BalanceApproachingKwayKMinusOneRefiner&&) = delete;
 
  private:
   void initializeImpl(const HyperedgeWeight max_gain) override final {
