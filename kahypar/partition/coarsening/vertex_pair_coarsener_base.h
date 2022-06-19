@@ -156,11 +156,11 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     //        "balance_constraint is violated after uncontraction:" << metrics::imbalance(_hg, _context)
     //        << ">" << __context.partition.epsilon);
     // _context.stats.set(StatTag::LocalSearch, "finalImbalance", current_metrics.imbalance);
-    if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
-      writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
-      writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
-      writeToFile(generalInfo(), "../partitioning_results/data/info.txt");
-    } else if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
+    FileLogLevel log_level = _context.logging.file_log_level;
+    if (log_level == FileLogLevel::write_imbalance_km1) {
+      _target_imbalances.clear();
+    }
+    if (log_level == FileLogLevel::write_imbalance_km1 || log_level == FileLogLevel::write_imbalance_km1_target) {
       writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
       writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
       writeVectorToFile(_target_imbalances, "../partitioning_results/data/target_imbalances.txt");
