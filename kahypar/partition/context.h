@@ -199,7 +199,6 @@ struct LocalSearchParameters {
 
   struct Flow {
     FlowExecutionMode execution_policy = FlowExecutionMode::UNDEFINED;
-    size_t max_flow_improvement_iterations = 0;
     size_t beta = std::numeric_limits<size_t>::max();
   };
 
@@ -253,7 +252,6 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;
-      str << "    max flow improvement iterations:  " << params.flow.max_flow_improvement_iterations << std::endl;
     }
   } else if (params.algorithm == RefinementAlgorithm::do_nothing) {
     str << "  no coarsening!  " << std::endl;

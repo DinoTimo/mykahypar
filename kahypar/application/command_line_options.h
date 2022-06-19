@@ -135,10 +135,7 @@ po::options_description createFlowRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-flow-beta" : "r-flow-beta"),
     po::value<size_t>((initial_partitioning ? &context.initial_partitioning.local_search.flow.beta : &context.local_search.flow.beta))->value_name("<size_t>"),
     "Beta of CONSTANT flow execution policy \n"
-    "(default: 128)")
-     ((initial_partitioning ? "i-r-flow-max-improvement-iterations" : "r-flow-max-improvement-iterations"),
-    po::value<size_t>((initial_partitioning ? &context.initial_partitioning.local_search.flow.max_flow_improvement_iterations : &context.local_search.flow.max_flow_improvement_iterations))->value_name("<size_t>"),
-    "Maximum number of flow improvement iterations, used in custom refiner");
+    "(default: 128)");
 
   return options;
 }
