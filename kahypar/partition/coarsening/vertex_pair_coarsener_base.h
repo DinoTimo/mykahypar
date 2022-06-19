@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 #include <filesystem>
+#include <sstream>
 
 #include "kahypar/datastructure/binary_heap.h"
 #include "kahypar/definitions.h"
@@ -199,9 +200,10 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     infos.push_back("k = " + std::to_string(_context.partition.k));
     infos.push_back("e = " + std::to_string(_context.partition.epsilon));
     BalancingFlowModel model = _context.local_search.fm.flow_model;
-    std::string model_string = (model == BalancingFlowModel::infinity_edges ? "infinity_edges" : (model== BalancingFlowModel::finite_edges ? "finite_edges" : "UNDEFINED"));
     if (model != BalancingFlowModel::UNDEFINED) {
-      infos.push_back("flow_model = " + model_string);
+      std::stringstream s;
+      s << model;
+      infos.push_back("flow_model = " + s.str());
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
     }
