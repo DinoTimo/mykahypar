@@ -91,8 +91,11 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
     _flow_solver(),
-    _flow_matrix(0),
+    _total_num_steps(0),
+    _current_step(0),
     _num_flow_nodes(_context.partition.k + 2),
+    _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
+    _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
     _quotient_edge_capacities(_context.partition.k * _context.partition.k, 0),
     _vertex_block_pair_bitvector(_hg.initialNumNodes() * _context.partition.k, false) { }
 
@@ -135,15 +138,13 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   }
 
   HypernodeWeight currentBlockWeightDelta() {
-    uint16_t k = _context.partition.k;
-    uint16_t total_num_steps = _hg.initialNumNodes() - k;
-    uint16_t current_step = _hg.currentNumNodes() - k + (_context.local_search.fm.balance_convergence_time * static_cast<double>(total_num_steps));
-    if (current_step >= total_num_steps) {
-      current_step = total_num_steps;
+    uint16_t current_pseudo_step = _current_step + (_context.local_search.fm.balance_convergence_time * static_cast<double>(_total_num_steps));
+    if (current_pseudo_step >= _total_num_steps) {
+      current_pseudo_step = _total_num_steps;
     }
-    uint16_t step_diff = total_num_steps - current_step;
+    uint16_t step_diff = _total_num_steps - current_pseudo_step;
     return static_cast<HypernodeWeight>(static_cast<double>(idealBlockWeight())
-      * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, _context.local_search.fm.balance_convergence_speed)
+      * std::pow((static_cast<double>(step_diff) / static_cast<double>(_total_num_steps)) + 1, _context.local_search.fm.balance_convergence_speed)
       * _context.partition.epsilon);
   }
 
@@ -170,13 +171,13 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     }
   }
   
-  std::vector<PartitionID> calculateCapacityMatrix() {
+  void calculateCapacityMatrix() {
     if (_context.local_search.fm.flow_model == BalancingFlowModel::finite_edges) {
       initQuotientEdgeCapacities();
     }
     PartitionID source = _context.partition.k;
     PartitionID sink = source + 1;
-    std::vector<HypernodeWeight> capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0);
+    std::fill(_capacity_matrix.begin(), _capacity_matrix.end(), 0);
     QuotientGraphBlockScheduler scheduler(_hg, _context);
     scheduler.buildQuotientGraph();
     for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
@@ -189,21 +190,21 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
         HypernodeWeight overload = heavierBlockWeight - idealWeight;
         HypernodeWeight underload = idealWeight - lighterBlockWeight;
         if (overload < 0 || underload < 0) {
-          capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+          _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
           continue;
         }
         HypernodeWeight maxEdgeCapacity = std::min(overload, underload);
-        capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+        _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
       } else if(_context.local_search.fm.flow_model == BalancingFlowModel::infinity_edges) {
-        capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::numeric_limits<HypernodeWeight>::max();
+        _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::numeric_limits<HypernodeWeight>::max();
       }
     }
 
     for (int i = 0; i < source; i++) {
       for (int j = i + 1; j < source; j++) {
-        HypernodeWeight & capacity = capacity_matrix[i * _num_flow_nodes + j]; 
+        HypernodeWeight & capacity = _capacity_matrix[i * _num_flow_nodes + j]; 
         capacity = capacity > 0 ? capacity : _hg.totalWeight() / (source);
-        capacity = capacity_matrix[j * _num_flow_nodes + i]; 
+        capacity = _capacity_matrix[j * _num_flow_nodes + i]; 
         capacity = capacity > 0 ? capacity : _hg.totalWeight() / (source);
       }
     }
@@ -211,13 +212,12 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     // Add edges between source and overloaded blocks and sink and underloaded blocks
     for (PartitionID blockNode = 0; blockNode < _context.partition.k; blockNode++) {
       if (isOverloadedBlock(blockNode)) {
-        capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight(); 
+        _capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight(); 
       }
       if (isUnderloadedBlock(blockNode)) {
-        capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
+        _capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
       }
     }
-    return capacity_matrix;
   }
 
   HypernodeWeight calculateQuotientNodeCapacity(PartitionID quotientNode) {
@@ -261,6 +261,10 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     Base::activateAdjacentFreeVertices(refinement_nodes);
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
+    uint32_t k = _context.partition.k;
+    _current_step = _hg.currentNumNodes() - k;
+    _total_num_steps = _hg.initialNumNodes() - k;
+    
     const double initial_imbalance = best_metrics.imbalance;
     double current_imbalance = best_metrics.imbalance;
 
@@ -276,20 +280,17 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
-    std::vector<HypernodeWeight> capacity_matrix = calculateCapacityMatrix();
-    std::vector<HypernodeWeight> original_capacity_matrix = capacity_matrix;
-    _flow_matrix = _flow_solver.solveFlow(capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
-
-    uint16_t k = _context.partition.k;
-    uint16_t current_step = _hg.currentNumNodes() - k;
-    uint16_t total_num_steps = _hg.initialNumNodes() - k;
-    bool printing = current_step <= 1 || current_step == total_num_steps / 2 || current_step >= total_num_steps - 2;
+    if (_current_step % 1 == 0) { 
+      calculateCapacityMatrix();
+      _flow_matrix = _flow_solver.solveFlow(_capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
+    } 
+    bool printing = _current_step <= 1 || _current_step == _total_num_steps / 2 || _current_step >= _total_num_steps - 2;
     if (printing) {
-      LOG <<kahypar::joinVector(capacity_matrix, "[", ",", "]");
-      LOG <<kahypar::joinVector(_flow_matrix, "[", ",", "]");
+      LOG << kahypar::joinVector(_capacity_matrix, "[", ",", "]");
+      LOG << kahypar::joinVector(_flow_matrix, "[", ",", "]");
     }
 
-    DBG << "Current ideal block weight is: " << std::to_string(idealBlockWeight()) << " at step: " << std::to_string(current_step) << " of a total of " << std::to_string(total_num_steps) << " steps."; 
+    DBG << "Current ideal block weight is: " << std::to_string(idealBlockWeight()) << " at step: " << std::to_string(_current_step) << " of a total of " << std::to_string(_total_num_steps) << " steps."; 
     DBG << "Current upper bound block weight is: " << std::to_string(currentUpperBlockWeightBound()); 
     DBG << "Current lower block weight is: " << std::to_string(currentLowerBlockWeightBound()); 
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
@@ -344,7 +345,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
       if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
         if (_hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node)) {
-          LOG << max_gain_node << " is tried to be moved from " << from_part << " to " << to_part << " at step " << current_step;
+          LOG << max_gain_node << " is tried to be moved from " << from_part << " to " << to_part << " at step " << _current_step;
           LOG << "is balanced_and_keeps_balance: " << balanced_and_keeps_balance;
           LOG << "is imbalanced_but_improves_balance: " << imbalanced_but_improves_balance;
         }
@@ -1140,8 +1141,11 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
-  std::vector<HypernodeWeight> _flow_matrix;
+  uint32_t _total_num_steps;
+  uint32_t _current_step;
   PartitionID _num_flow_nodes;
+  std::vector<HypernodeWeight> _flow_matrix;
+  std::vector<HypernodeWeight> _capacity_matrix;
   std::vector<HypernodeWeight> _quotient_edge_capacities;
   std::vector<bool> _vertex_block_pair_bitvector;
   
