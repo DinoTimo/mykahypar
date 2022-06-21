@@ -423,10 +423,11 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
         << (_stopping_policy.searchShouldStop(touched_hns_since_last_improvement, _context, beta,
                                           best_metrics.km1, current_km1)
         == true ? "policy" : "empty queue");
-
+    //TODO
+    // if current km1 > some parameter, threshold --> roll back to 0
     Base::rollback(_performed_moves.size() - 1, min_cut_index);
     _gain_cache.rollbackDelta();
-
+    //ROLLBACK FLOW
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));

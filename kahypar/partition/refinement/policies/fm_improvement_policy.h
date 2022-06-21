@@ -45,8 +45,8 @@ class CutDecreasedOrImbalanceAllowed : public ImprovementPolicy {
                                       const double best_imbalance,
                                       const double inital_imbalance,
                                       const double max_imbalance) {
-    return (best_cut < initial_cut && best_imbalance < max_imbalance)
-     || (best_imbalance > max_imbalance && best_imbalance < inital_imbalance);
+    return (best_cut < initial_cut)
+     || (best_imbalance > max_imbalance && best_imbalance < inital_imbalance && best_cut == initial_cut);
   }
 };
 }  // namespace kahypar
