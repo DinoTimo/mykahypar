@@ -174,6 +174,13 @@ class InitialPartitionerBase {
               LOG << "balance_approaching_kway_fm_km1.";
               break;
             }
+            if (_context.local_search.algorithm == RefinementAlgorithm::imbalance_holding_kway_fm_km1) {
+              refiner = (RefinerFactory::getInstance().createObject(
+                         RefinementAlgorithm::imbalance_holding_kway_fm_km1,
+                         _hg, _context));
+              LOG << "imbalance_holding_kway_fm_km1.";
+              break;
+            }
             refiner = (RefinerFactory::getInstance().createObject(
                          RefinementAlgorithm::kway_fm_km1,
                          _hg, _context));

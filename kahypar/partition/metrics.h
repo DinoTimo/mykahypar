@@ -131,28 +131,46 @@ static inline HyperedgeWeight objective(const Hypergraph& hg, const Objective& o
     }
   }
 
-  // This is duplicate code
-  static inline HypernodeWeight currentUpperBlockWeightBound(const Hypergraph & hg, const Context & context) {
-    HypernodeWeight ideal = hg.totalWeight() / context.partition.k;
-    uint16_t k = context.partition.k;
-    uint16_t total_num_steps = hg.initialNumNodes() - k;
-    uint16_t current_step = hg.currentNumNodes() - k + (context.local_search.fm.balance_convergence_time * static_cast<double>(total_num_steps));
-    if (current_step >= total_num_steps) {
-      current_step = total_num_steps;
-    }
-    uint16_t step_diff = total_num_steps - current_step;
-    HypernodeWeight diff = static_cast<HypernodeWeight>(static_cast<double>(ideal)
-      * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, context.local_search.fm.balance_convergence_speed)
-      * context.partition.epsilon);
-    return ideal + diff;
-  }
-
   static inline HypernodeWeight heaviest_domain_weight(const Hypergraph& hg) {
     HypernodeWeight max_weight = hg.partWeight(0);
     for (PartitionID id = 0; id < hg.k(); id++) {
       max_weight = (hg.partWeight(id) > max_weight) ? hg.partWeight(id) : max_weight;
     }
     return max_weight;
+  }
+
+  // This is duplicate code
+  static inline HypernodeWeight currentUpperBlockWeightBound(const Hypergraph & hg, const Context & context) {
+    HypernodeWeight idealBlockWeight = hg.totalWeight() / context.partition.k;
+    uint32_t k = context.partition.k;
+    uint32_t total_num_steps = hg.initialNumNodes() - k;
+    uint32_t current_step = hg.currentNumNodes() - k + (context.local_search.fm.balance_convergence_time * static_cast<double>(total_num_steps));
+    if (context.local_search.algorithm == RefinementAlgorithm::balance_approaching_kway_fm_km1) {
+      if (current_step >= total_num_steps) {
+        current_step = total_num_steps;
+      }
+      uint32_t step_diff = total_num_steps - current_step;
+      HypernodeWeight diff = static_cast<HypernodeWeight>(static_cast<double>(idealBlockWeight)
+        * std::pow((static_cast<double>(step_diff) / static_cast<double>(total_num_steps)) + 1, context.local_search.fm.balance_convergence_speed)
+        * context.partition.epsilon);
+      return idealBlockWeight + diff;
+    }
+    if (context.local_search.algorithm == RefinementAlgorithm::imbalance_holding_kway_fm_km1) {
+      uint32_t imbalance_step_limit = static_cast<uint32_t>((1 - context.local_search.fm.balance_convergence_time) * static_cast<double>(total_num_steps));
+      if (current_step < imbalance_step_limit) {
+        return heaviest_domain_weight(hg);
+      }
+      //f(x) = (x-b)² + c
+      double y0 = heaviest_domain_weight(hg);
+      //x0 = 0
+      double y1 = static_cast<double>(idealBlockWeight) * context.partition.epsilon;
+      double x1 = total_num_steps - imbalance_step_limit;
+      double b = (y0 - y1 + (x1 * x1)) / (2 * x1);
+      double c = y0 - (b * b);
+      double current_pseudo_step = static_cast<double>(current_step - imbalance_step_limit);
+      return ((current_pseudo_step - b) * (current_pseudo_step - b)) + c;
+    }
+    return 0;
   }
 
 // Hide original imbalance definition that assumes Lmax0=Lmax1=Lmax

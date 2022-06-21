@@ -103,6 +103,7 @@ enum class RefinementAlgorithm : uint8_t {
   kway_fm,
   kway_fm_km1,
   balance_approaching_kway_fm_km1,
+  imbalance_holding_kway_fm_km1,
   twoway_fm_hyperflow_cutter,
   twoway_hyperflow_cutter,
   kway_hyperflow_cutter,
@@ -394,6 +395,7 @@ static std::ostream& operator<< (std::ostream& os, const RefinementAlgorithm& al
     case RefinementAlgorithm::kway_fm: return os << "kway_fm";
     case RefinementAlgorithm::kway_fm_km1: return os << "kway_fm_km1";
     case RefinementAlgorithm::balance_approaching_kway_fm_km1: return os << "balance_approaching_kway_fm_km1";
+    case RefinementAlgorithm::imbalance_holding_kway_fm_km1: return os << "imbalance_holding_kway_fm_km1";
     case RefinementAlgorithm::twoway_hyperflow_cutter: return os << "twoway_hyperflow_cutter";
     case RefinementAlgorithm::twoway_fm_hyperflow_cutter: return os << "twoway_fm_hyperflow_cutter";
     case RefinementAlgorithm::kway_hyperflow_cutter: return os << "kway_hyperflow_cutter";
@@ -604,7 +606,7 @@ static RefinementStoppingRule stoppingRuleFromString(const std::string& rule) {
 static BalancingFlowModel balancingFlowModelFromString(const std::string& model) {
   if (model == "finite_edges") {
     return BalancingFlowModel::finite_edges;
-  } else if (model == "infinity_edge") {
+  } else if (model == "infinity_edges") {
     return BalancingFlowModel::infinity_edges;
   }
   LOG << "No valid flow model for flow balancing.";
@@ -646,6 +648,8 @@ static RefinementAlgorithm refinementAlgorithmFromString(const std::string& type
     return RefinementAlgorithm::kway_fm_hyperflow_cutter_km1;
   } else if (type == "balance_approaching_kway_fm_km1") {
     return RefinementAlgorithm::balance_approaching_kway_fm_km1;
+  } else if (type == "imbalance_holding_kway_fm_km1") {
+    return RefinementAlgorithm::imbalance_holding_kway_fm_km1;
   } else if (type == "do_nothing") {
     return RefinementAlgorithm::do_nothing;
   }
