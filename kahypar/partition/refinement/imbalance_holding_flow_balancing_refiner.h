@@ -40,6 +40,7 @@
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/refinement/flow/graph_flow_solver.h"
+#include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
@@ -130,7 +131,7 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     Base::performMovesAndUpdateCache(moves, refinement_nodes, changes);
   }
 
-  HypernodeWeight currentUpperBlockWeightBound() {
+  HypernodeWeight currentUpperBlockWeightBound() override {
     uint32_t imbalance_step_limit = static_cast<uint32_t>((1 - _context.local_search.fm.balance_convergence_time) * static_cast<double>(_total_num_steps));
     if (_current_step < imbalance_step_limit) {
       return metrics::heaviest_domain_weight(_hg);

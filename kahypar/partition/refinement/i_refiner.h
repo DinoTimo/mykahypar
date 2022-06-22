@@ -54,6 +54,10 @@ class IRefiner {
     initializeImpl(max_gain);
   }
 
+  virtual HypernodeWeight currentUpperBlockWeightBound() {
+    return 0;
+  }
+
   virtual ~IRefiner() = default;
 
   void performMovesAndUpdateCache(const std::vector<Move>& moves,

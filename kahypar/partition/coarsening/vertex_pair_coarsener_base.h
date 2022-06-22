@@ -33,6 +33,7 @@
 #include "kahypar/definitions.h"
 #include "kahypar/meta/int_to_type.h"
 #include "kahypar/partition/coarsening/coarsener_base.h"
+#include "kahypar/partition/refinement/imbalance_holding_flow_balancing_refiner.h"
 #include "kahypar/partition/coarsening/vertex_pair_rater.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
@@ -125,14 +126,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
           }
         break;
       }
-      if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
-        _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
-        _km1s.push_back(metrics::km1(_hg));
-        _target_imbalances.push_back(metrics::currentUpperBlockWeightBound(_hg, _context));
-      } else if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
-        _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
-        _km1s.push_back(metrics::km1(_hg));
-      }
       refinement_nodes.clear();
       refinement_nodes.push_back(_history.back().contraction_memento.u);
       refinement_nodes.push_back(_history.back().contraction_memento.v);
@@ -140,6 +133,13 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       uncontract(changes);
 
       CoarsenerBase::performLocalSearch(refiner, refinement_nodes, current_metrics, changes);
+      if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target || 
+          _context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
+        _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
+        _km1s.push_back(metrics::km1(_hg));
+      } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
+        _target_imbalances.push_back(refiner.currentUpperBlockWeightBound());
+      }
       changes.representative[0] = 0;
       changes.contraction_partner[0] = 0;
 

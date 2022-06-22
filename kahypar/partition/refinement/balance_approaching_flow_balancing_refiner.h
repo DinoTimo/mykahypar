@@ -129,7 +129,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     Base::performMovesAndUpdateCache(moves, refinement_nodes, changes);
   }
 
-  HypernodeWeight currentUpperBlockWeightBound() {
+  HypernodeWeight currentUpperBlockWeightBound() override {
     return idealBlockWeight() + currentBlockWeightDelta();
   }
 
