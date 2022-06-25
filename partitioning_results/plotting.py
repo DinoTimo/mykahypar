@@ -44,15 +44,15 @@ def showKm1():
   if num == 0: return
   initkm1 = float(lines[0])
   finalkm1 = float(lines[len(lines) - 1])
-  plt.hlines(y=initkm1, xmin=0, xmax=num - 1 , linewidth=1.5, color='g', label='initial km1: ' + str(initkm1))
-  plt.hlines(y=finalkm1, xmin=0, xmax=num - 1 , linewidth=1.5, color='r', label='final km1: ' + str(finalkm1))
+  plt.hlines(y=initkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='g', label='initial km1: ' + str(initkm1))
+  plt.hlines(y=finalkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='r', label='final km1: ' + str(finalkm1))
 
   infoLines = readLines(infopath)
   infoArr = infoLines[0].split(" ")
   graphFile = infoArr[len(infoArr) - 1]
   kahyparkm1 = getKm1FromFile(graphFile)
   if kahyparkm1 != 0:
-    plt.hlines(y=kahyparkm1, xmin=0, xmax=num - 1 , linewidth=1.5, color='y', label='kahypar km1: ' + str(kahyparkm1))
+    plt.hlines(y=kahyparkm1, xmin=0, xmax=num - 1 , linewidth=1, color='y', label='kahypar km1: ' + str(kahyparkm1))
     
   plt.title('km1 goal - minimize')
   plt.plot(floatify(lines), color='b', label='km1')
