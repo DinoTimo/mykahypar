@@ -50,7 +50,7 @@
 
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
-          class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
+          class FMImprovementPolicy = CutDecreasedOrImbalanceAllowed>
 class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
                                    private FMRefinerBase<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy> >{
  private:
@@ -92,6 +92,8 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
     _flow_solver(),
+    _initial_imbalance_set(false),
+    _initial_imbalance(0),
     _previous_step(0),
     _total_num_steps(0),
     _current_step(0),
@@ -132,19 +134,24 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
   }
 
   HypernodeWeight currentUpperBlockWeightBound() override {
-    uint32_t imbalance_step_limit = static_cast<uint32_t>((1 - _context.local_search.fm.balance_convergence_time) * static_cast<double>(_total_num_steps));
-    if (_current_step < imbalance_step_limit) {
-      return metrics::heaviest_domain_weight(_hg);
+    uint32_t imbalance_step_offset = static_cast<uint32_t>((_context.local_search.fm.balance_convergence_time) * static_cast<double>(_total_num_steps));
+    uint32_t balancing_start_step = _total_num_steps - 2 * imbalance_step_offset;
+    if (_current_step < balancing_start_step) {
+      return _initial_imbalance;
     }
-    //f(x) = (x-b)² + c
-    double y0 = metrics::heaviest_domain_weight(_hg);
-    //x0 = 0
-    double y1 = static_cast<double>(idealBlockWeight()) * _context.partition.epsilon;
-    double x1 = _total_num_steps - imbalance_step_limit;
-    double b = (y0 - y1 + (x1 * x1)) / (2 * x1);
-    double c = y0 - (b * b);
-    double current_pseudo_step = static_cast<double>(_current_step - imbalance_step_limit);
-    return ((current_pseudo_step - b) * (current_pseudo_step - b)) + c;
+    uint32_t goal_optimizing_step = _total_num_steps - imbalance_step_offset;
+    if (_current_step >= goal_optimizing_step) {
+      return static_cast<HypernodeWeight>(static_cast<double>(idealBlockWeight()) * (1 + _context.partition.epsilon));
+    }
+    //f(x) = mx + c
+    double y0 = _initial_imbalance;
+    double x0 = balancing_start_step;
+    double y1 = static_cast<double>(idealBlockWeight()) * (1 + _context.partition.epsilon);
+    double x1 = static_cast<double>(goal_optimizing_step);
+    double x = static_cast<double>(_current_step);
+    double m = (y0 - y1) / (x0 - x1);
+    double c = y0 - m * x0;
+    return m * x + c;
   }
 
   HypernodeWeight currentLowerBlockWeightBound() {
@@ -255,6 +262,10 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     if (_hg.currentNumNodes() - _context.partition.k == 0) {
       return false;
     }
+    if (!_initial_imbalance_set) {
+      _initial_imbalance_set = true;
+      _initial_imbalance = metrics::heaviest_domain_weight(_hg);
+    }
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -342,8 +353,11 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
+      uint32_t imbalance_step_offset = static_cast<uint32_t>((_context.local_search.fm.balance_convergence_time) * static_cast<double>(_total_num_steps));
+      uint32_t goal_optimizing_step = _total_num_steps - imbalance_step_offset;
+    
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
-                                      moveFeasibilityByFlow(from_part, to_part, max_gain_node);
+                                      moveFeasibilityByFlow(from_part, to_part, max_gain_node) && _current_step < goal_optimizing_step;
       const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
@@ -370,8 +384,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
 
         HEAVY_REFINEMENT_ASSERT(current_km1 == metrics::km1(_hg),
                V(current_km1) << V(metrics::km1(_hg)));
-        HEAVY_REFINEMENT_ASSERT(current_imbalance == metrics::imbalance(_hg, _context),
-               V(current_imbalance) << V(metrics::imbalance(_hg, _context)));
 
         updateNeighbours(max_gain_node, from_part, to_part); //maybe coonsider gains in pq und in cache
         /** - indicates best value, C is Cost, km1 in this case. W is weight of the largest subdomain, not imbalance! i indicates the current partition, T is target weight
@@ -435,8 +447,8 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));
     return FMImprovementPolicy::improvementFound(best_metrics.km1, initial_km1,
-                                                 best_metrics.imbalance, initial_imbalance,
-                                                 _context.partition.epsilon);
+                                                 best_metrics.heaviest_domain_weight, initial_heaviest_block_weight,
+                                                 currentUpperBlockWeightBound());
   }
 
 
@@ -1145,6 +1157,8 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
+  bool _initial_imbalance_set;
+  double _initial_imbalance;
   uint32_t _previous_step;
   uint32_t _total_num_steps;
   uint32_t _current_step;
