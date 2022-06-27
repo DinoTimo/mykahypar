@@ -255,9 +255,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
           LOG << "is imbalanced_but_improves_balance: " << imbalanced_but_improves_balance;
         }
         Base::moveHypernode(max_gain_node, from_part, to_part);
-        _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(max_gain_node);
-        _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(max_gain_node);
-        
+        FlowBase::updateFlow(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],
@@ -330,9 +328,10 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
         == true ? "policy" : "empty queue");
     //TODO
     // if current km1 > some parameter, threshold --> roll back to 0
+
     Base::rollback(_performed_moves.size() - 1, min_cut_index);
     _gain_cache.rollbackDelta();
-    //ROLLBACK FLOW
+    FlowBase::rollbackFlow(_performed_moves.size() - 1, min_cut_index);
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));

@@ -136,10 +136,22 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
 
 
+    void rollbackFlow(int last_index, const int min_cut_index) {
+      DBG << "min_cut_index=" << min_cut_index;
+      DBG << "last_index=" << last_index;
+      while (last_index != min_cut_index) {
+        const HypernodeID hn = _performed_moves[last_index].hn;
+        const PartitionID from_part = _performed_moves[last_index].to_part;
+        const PartitionID to_part = _performed_moves[last_index].from_part;
+        updateFlow(hn, from_part, to_part);
+        --last_index;
+      }
+    }
 
-
-    
-
+    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
+      _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
+      _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+    }
 
     FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
     HypernodeWeight _initial_imbalance;
@@ -155,5 +167,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
     using Base::_context;
     using Base::_hg;
+    using Base::_performed_moves;
 };
 }
