@@ -40,6 +40,8 @@
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/refinement/flow/graph_flow_solver.h"
+#include "kahypar/partition/refinement/flow/flow_balancing_refiner.h"
+#include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
@@ -51,7 +53,7 @@ namespace kahypar {
 template <class StoppingPolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
 class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
-                                   private FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy> >{
+          private FlowBalancingRefiner<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
@@ -59,6 +61,9 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
   using GainCache = KwayGainCache<Gain>;
   using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
+                                                                FMImprovementPolicy> >;
+
+  using FlowBase = FlowBalancingRefiner<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
                                                                 FMImprovementPolicy> >;
 
   friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
@@ -84,7 +89,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
  public:
   BalanceApproachingKwayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
-    Base(hypergraph, context),
+    FlowBase(hypergraph, context),
     _tmp_gains(_context.partition.k, 0),
     _new_adjacent_part(_hg.initialNumNodes(), Hypergraph::kInvalidPartition),
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
