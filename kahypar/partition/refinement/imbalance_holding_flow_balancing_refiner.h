@@ -180,7 +180,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     _current_step = _hg.currentNumNodes() - k;
     _total_num_steps = _hg.initialNumNodes() - k;
     
-    const double initial_imbalance = best_metrics.imbalance;
     double current_imbalance = best_metrics.imbalance;
 
     const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_domain_weight;

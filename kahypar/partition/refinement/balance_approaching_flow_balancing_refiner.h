@@ -27,6 +27,7 @@
 #include <tuple>
 #include <utility>
 #include <vector>
+#include <cmath>
 
 #include "gtest/gtest_prod.h"
 
@@ -127,19 +128,26 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   }
 
   HypernodeWeight currentUpperBlockWeightBound() override {
-    return FlowBase::idealBlockWeight() + currentBlockWeightDelta();
+    double initialPureUpper = static_cast<double>(FlowBase::idealBlockWeight() + currentBlockWeightDelta(0));
+    double initialImbalance = static_cast<double>(_initial_imbalance);
+    uint32_t current_pseudo_step = static_cast<uint32_t>(static_cast<double>(_current_step) * (1 / (1 - _context.local_search.fm.balance_convergence_time)));
+    current_pseudo_step = std::min(current_pseudo_step, _total_num_steps);
+    double exponent = 1 - ((static_cast<double>(current_pseudo_step)) / static_cast<double>((FlowBase::_total_num_steps)));
+    double modifier = std::pow(initialImbalance / initialPureUpper, exponent);
+    return static_cast<HypernodeWeight>((FlowBase::idealBlockWeight() + currentBlockWeightDelta()) * modifier);
   }
 
   HypernodeWeight currentLowerBlockWeightBound() {
-      return FlowBase::idealBlockWeight() - currentBlockWeightDelta();
-    }
+    return FlowBase::idealBlockWeight() - currentBlockWeightDelta();
+  }
 
   HypernodeWeight currentBlockWeightDelta() {
-    uint16_t current_pseudo_step = _current_step + (_context.local_search.fm.balance_convergence_time * static_cast<double>(_total_num_steps));
-    if (current_pseudo_step >= _total_num_steps) {
-      current_pseudo_step = _total_num_steps;
-    }
-    uint16_t step_diff = _total_num_steps - current_pseudo_step;
+    return currentBlockWeightDelta(_current_step);
+  }
+
+  HypernodeWeight currentBlockWeightDelta(uint32_t current_step) {
+    uint32_t current_pseudo_step = std::min(_total_num_steps, current_step + static_cast<uint32_t>(_context.local_search.fm.balance_convergence_time * static_cast<double>(_total_num_steps)));
+    uint32_t step_diff = _total_num_steps - current_pseudo_step;
     return static_cast<HypernodeWeight>(static_cast<double>(FlowBase::idealBlockWeight())
       * std::pow((static_cast<double>(step_diff) / static_cast<double>(_total_num_steps)) + 1, _context.local_search.fm.balance_convergence_speed)
       * _context.partition.epsilon);
@@ -157,6 +165,10 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     if (_hg.currentNumNodes() - _context.partition.k == 0) {
       return false;
     }
+    if (!_initial_imbalance_set) {
+      _initial_imbalance_set = true;
+      _initial_imbalance = metrics::heaviest_domain_weight(_hg);
+    }
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -170,7 +182,6 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     _current_step = _hg.currentNumNodes() - k;
     _total_num_steps = _hg.initialNumNodes() - k;
     
-    const double initial_imbalance = best_metrics.imbalance;
     double current_imbalance = best_metrics.imbalance;
 
     const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_domain_weight;
@@ -336,8 +347,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));
     return FMImprovementPolicy::improvementFound(best_metrics.km1, initial_km1,
-                                                 best_metrics.imbalance, initial_imbalance,
-                                                 _context.partition.epsilon);
+                                                 best_metrics.heaviest_domain_weight, initial_heaviest_block_weight,
+                                                 currentUpperBlockWeightBound());
   }
 
 
