@@ -349,22 +349,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
                                                  currentUpperBlockWeightBound());
   }
 
-  void rollbackFlow(int last_index, const int min_cut_index) {
-    DBG << "min_cut_index=" << min_cut_index;
-    DBG << "last_index=" << last_index;
-    while (last_index != min_cut_index) {
-      const HypernodeID hn = _performed_moves[last_index].hn;
-      const PartitionID from_part = _performed_moves[last_index].to_part;
-      const PartitionID to_part = _performed_moves[last_index].from_part;
-      _hg.changeNodePart(hn, from_part, to_part);
-      --last_index;
-    }
-  }
-
-  void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
-
-  }
-
   KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void deltaGainUpdatesForCacheOnly(const HypernodeID pin,
                                                                     const PartitionID from_part,
                                                                     const PartitionID to_part,
