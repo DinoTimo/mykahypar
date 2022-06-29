@@ -289,7 +289,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
          * or C^i = C- && W^i < W-
          * or T <= W^i && W^i < W-
          */
-        const bool target_balance_at_epsilon = currentUpperBound == FlowBase::idealBlockWeight();
+        const bool balanced_goal_optimizing_phase = currentUpperBound == FlowBase::idealBlockWeight();
+        const bool balancing_phase = !balanced_goal_optimizing_phase;
         // acceptance policy from jostle, but now adapted
         const bool improved_km1 = (current_km1 < best_metrics.km1);
         const bool same_or_better_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
@@ -301,9 +302,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
                                                  (current_km1 < best_metrics.km1);
         const bool improved_balance_less_equal_km1 = (current_heaviest_block_weight < best_metrics.heaviest_domain_weight) &&
                                                      (current_km1 <= best_metrics.km1);
-        
-        if ( ((improved_km1_within_balance || improved_balance_less_equal_km1) && target_balance_at_epsilon)
-        || (!target_balance_at_epsilon && (improved_km1 || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))) {
+        if ( (balancing_phase                && (improved_km1 || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))
+          || (balanced_goal_optimizing_phase && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
 
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
