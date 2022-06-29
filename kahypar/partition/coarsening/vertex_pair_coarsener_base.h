@@ -196,7 +196,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
   std::string generalInfo() const {
     std::vector<std::string> infos;
     std::string path = _context.partition.graph_filename;
-    infos.push_back("graph file: " + path.substr(path.find_last_of("/") + 1));
+    infos.push_back("graph : " + path.substr(path.find_last_of("/") + 1));
     infos.push_back("k = " + std::to_string(_context.partition.k));
     infos.push_back("e = " + std::to_string(_context.partition.epsilon));
     BalancingFlowModel model = _context.local_search.fm.flow_model;
@@ -206,9 +206,10 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       infos.push_back("flow_model = " + s.str());
       std::stringstream s2;
       s2 << _context.local_search.algorithm;
-      infos.push_back("local search algorithm = " + s2.str());
+      infos.push_back("search algorithm = " + s2.str());
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
+      infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
     }
     return joinVector(infos, "", "\n", "");
   }
