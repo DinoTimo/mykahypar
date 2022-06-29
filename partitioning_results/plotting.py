@@ -34,7 +34,7 @@ def showImbalance():
     plt.hlines(y=float(targetImbalances[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='g', label='final target weight')
   plt.legend()
   infoLines = readLines(infopath)
-  plt.title('       '.join(infoLines))
+  plt.title(', '.join(infoLines))
 
 
 #Expecting the following format: just one value per line, no comma
