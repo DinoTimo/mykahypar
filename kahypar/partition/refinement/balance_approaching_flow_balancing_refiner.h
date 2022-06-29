@@ -289,16 +289,21 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
          * or C^i = C- && W^i < W-
          * or T <= W^i && W^i < W-
          */
-
+        const bool target_balance_at_epsilon = currentUpperBound == FlowBase::idealBlockWeight();
+        // acceptance policy from jostle, but now adapted
         const bool improved_km1 = (current_km1 < best_metrics.km1);
-        const bool same_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
-        const bool better_balance_when_unbalanced = (currentUpperBound <= current_heaviest_block_weight) && (current_heaviest_block_weight < initial_heaviest_block_weight);
-       /* const bool improved_km1_within_balance = (current_imbalance <= _context.partition.epsilon) &&
+        const bool same_or_better_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
+        const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_heaviest_block_weight)
+              && (current_heaviest_block_weight < initial_heaviest_block_weight) 
+              && ((static_cast<double>(current_km1) / static_cast<double>(initial_km1)) < _context.local_search.fm.km1_increase_tolerance);
+        // kahypar
+        const bool improved_km1_within_balance = (current_heaviest_block_weight <= best_metrics.heaviest_domain_weight) &&
                                                  (current_km1 < best_metrics.km1);
-        const bool improved_balance_less_equal_km1 = (current_imbalance < best_metrics.imbalance) &&
-                                                     (current_km1 <= best_metrics.km1);*/
-        // acceptance policy from jostle
-        if (improved_km1 || better_balance_when_unbalanced || same_km1_better_balance) {
+        const bool improved_balance_less_equal_km1 = (current_heaviest_block_weight < best_metrics.heaviest_domain_weight) &&
+                                                     (current_km1 <= best_metrics.km1);
+        
+        if ( ((improved_km1_within_balance || improved_balance_less_equal_km1) && target_balance_at_epsilon)
+        || (!target_balance_at_epsilon && (improved_km1 || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))) {
 
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
