@@ -1,12 +1,15 @@
 import readline
+from xml.dom.expatbuilder import parseString
 import matplotlib.pyplot as plt
 import numpy as np
 
 path = "/home/timo/Coding/mykahypar/partitioning_results/data/"
 km1path = path + "km1.txt"
-imbpath = path + "imbalances.txt"
+lowerpath = path + "lower_bounds.txt"
+targetlowerpath = path + "target_lower_bounds.txt"
+upperpath = path + "upper_bounds.txt"
+targetupperpath = path + "target_upper_bounds.txt"
 infopath = path + "info.txt"
-targetpath = path + "target_imbalances.txt"
 resultspath = path + "other_results.txt"
 
 def main():
@@ -21,17 +24,22 @@ def readLines(path):
   with open(path) as file:
     return file.read().splitlines()
 
+def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfinal):
+  actuals = readLines(actualpath)
+  num = len(actuals)
+  if (num <= 0) : return
+  plt.plot(range(num), floatify(actuals), 'b', label=actuallabel)
+  targets = readLines(targetpath)
+  if (len(targets) > 0): 
+    plt.plot(range(num), floatify(targets), 'r', label=targetlabel)
+    if showfinal:
+      plt.hlines(y=float(targets[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='g', label='final target weight')
+
 #Expecting the following format for imbalance.txt: one value per line
 #Expecting the following format for target_imbalances.txt: one value per line
 def showImbalance():
-  imbalances = readLines(imbpath)
-  num = len(imbalances)
-  if (num <= 0) : return
-  plt.plot(range(num), floatify(imbalances), 'b', label='actual imbalances')
-  targetImbalances = readLines(targetpath)
-  if (len(targetImbalances) > 0): 
-    plt.plot(range(num), floatify(targetImbalances), 'r', label='target imbalances')
-    plt.hlines(y=float(targetImbalances[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='g', label='final target weight')
+  showActualAndTarget(lowerpath, 'lightest block weight', targetlowerpath, 'target lightest block', True)
+  showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
   plt.legend()
   infoLines = readLines(infopath)
   plt.title(', '.join(infoLines))

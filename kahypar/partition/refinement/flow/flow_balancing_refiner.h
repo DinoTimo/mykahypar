@@ -32,7 +32,8 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
   protected:
     FlowBalancingRefiner(Hypergraph& hypergraph, const Context& context) : FMRefinerBase<RollbackElement, Derived>(hypergraph, context),
       _flow_solver(),
-      _initial_imbalance(0),
+      _initial_lightest_block_weight(0),
+      _initial_heaviest_block_weight(0),
       _initial_imbalance_set(false),
       _total_num_steps(0),
       _current_step(0),
@@ -134,8 +135,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       return _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2;
     }
 
-
-
     void rollbackFlow(int last_index, const int min_cut_index) {
       DBG << "min_cut_index=" << min_cut_index;
       DBG << "last_index=" << last_index;
@@ -154,7 +153,8 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     }
 
     FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
-    HypernodeWeight _initial_imbalance;
+    HypernodeWeight _initial_lightest_block_weight;
+    HypernodeWeight _initial_heaviest_block_weight;
     bool _initial_imbalance_set;
     uint32_t _total_num_steps;
     uint32_t _current_step;

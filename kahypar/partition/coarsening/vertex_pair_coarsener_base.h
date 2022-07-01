@@ -47,16 +47,22 @@ template <class PrioQueue = ds::BinaryMaxHeap<HypernodeID, RatingType> >
 class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
   static constexpr bool debug = false;
-  std::vector<double> _imbalances;
-  std::vector<double> _target_imbalances;
+  std::vector<double> _upper_bounds;
+  std::vector<double> _target_upper_bounds;
+  std::vector<double> _lower_bounds;
+  std::vector<double> _target_lower_bounds;
+  std::vector<double> _standard_divs;
   std::vector<double> _km1s;
 
  public:
   VertexPairCoarsenerBase(Hypergraph& hypergraph, const Context& context,
                           const HypernodeWeight weight_of_heaviest_node) :
     CoarsenerBase(hypergraph, context, weight_of_heaviest_node),
-    _imbalances(0, 0),
-    _target_imbalances(0, 0),
+    _upper_bounds(0, 0),
+    _target_upper_bounds(0, 0),
+    _lower_bounds(0, 0),
+    _target_lower_bounds(0, 0),
+    _standard_divs(0, 0),
     _km1s(0, 0),
     _pq(_hg.initialNumNodes()) { }
 
@@ -136,10 +142,12 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       CoarsenerBase::performLocalSearch(refiner, refinement_nodes, current_metrics, changes);
       if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target || 
           _context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
-        _imbalances.push_back(metrics::heaviest_block_weight(_hg));
+        _upper_bounds.push_back(metrics::heaviest_block_weight(_hg));
+        _lower_bounds.push_back(metrics::smallest_block_weight(_hg));
         _km1s.push_back(metrics::km1(_hg));
       } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
-        _target_imbalances.push_back(refiner.currentUpperBlockWeightBound());
+        _target_upper_bounds.push_back(refiner.currentUpperBlockWeightBound());
+        _target_lower_bounds.push_back(refiner.currentLowerBlockWeightBound());
       }
       changes.representative[0] = 0;
       changes.contraction_partner[0] = 0;
@@ -159,12 +167,16 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     // _context.stats.set(StatTag::LocalSearch, "finalImbalance", current_metrics.imbalance);
     FileLogLevel log_level = _context.logging.file_log_level;
     if (log_level == FileLogLevel::write_imbalance_km1) {
-      _target_imbalances.clear();
+      _target_upper_bounds.clear();
+      _target_lower_bounds.clear();
     }
     if (log_level == FileLogLevel::write_imbalance_km1 || log_level == FileLogLevel::write_imbalance_km1_target) {
       writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
-      writeVectorToFile(_imbalances, "../partitioning_results/data/imbalances.txt");
-      writeVectorToFile(_target_imbalances, "../partitioning_results/data/target_imbalances.txt");
+      writeVectorToFile(_lower_bounds, "../partitioning_results/data/lower_bounds.txt");
+      writeVectorToFile(_target_lower_bounds, "../partitioning_results/data/target_lower_bounds.txt");
+      writeVectorToFile(_upper_bounds, "../partitioning_results/data/upper_bounds.txt");
+      writeVectorToFile(_target_upper_bounds, "../partitioning_results/data/target_upper_bounds.txt");
+      writeVectorToFile(_standard_divs, "../partitioning_results/data/standard_divs.txt");
       writeToFile(generalInfo(), "../partitioning_results/data/info.txt");
     }
     bool improvement_found = false;
