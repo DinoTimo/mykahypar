@@ -144,6 +144,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
           _context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
         _upper_bounds.push_back(metrics::heaviest_block_weight(_hg));
         _lower_bounds.push_back(metrics::smallest_block_weight(_hg));
+        _standard_divs.push_back(metrics::standard_deviation(_hg));
         _km1s.push_back(metrics::km1(_hg));
       } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
         _target_upper_bounds.push_back(refiner.currentUpperBlockWeightBound());
