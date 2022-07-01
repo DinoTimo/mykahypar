@@ -217,7 +217,8 @@ class InitialPartitionerBase {
       Metrics current_metrics = { metrics::hyperedgeCut(_hg),
                                   metrics::km1(_hg),
                                   metrics::imbalance(_hg, _context),
-                                  metrics::heaviest_domain_weight(_hg) };
+                                  metrics::heaviest_block_weight(_hg),
+                                  metrics::smallest_block_weight(_hg) };
 #ifdef KAHYPAR_USE_ASSERTIONS
       HyperedgeWeight old_cut = current_metrics.cut;
       HyperedgeWeight old_km1 = current_metrics.km1;

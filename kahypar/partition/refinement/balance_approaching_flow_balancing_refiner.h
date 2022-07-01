@@ -167,7 +167,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     }
     if (!_initial_imbalance_set) {
       _initial_imbalance_set = true;
-      _initial_imbalance = metrics::heaviest_domain_weight(_hg);
+      _initial_imbalance = metrics::heaviest_block_weight(_hg);
     }
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
@@ -184,8 +184,11 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     
     double current_imbalance = best_metrics.imbalance;
 
-    const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_domain_weight;
-    HypernodeWeight current_heaviest_block_weight = metrics::heaviest_domain_weight(_hg);
+    const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_block_weight;
+    HypernodeWeight current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+
+    const HypernodeWeight initial_smallest_block_weight = best_metrics.smallest_block_weight;
+    HypernodeWeight current_smallest_block_weight = metrics::smallest_block_weight(_hg);
 
     const HyperedgeWeight initial_km1 = best_metrics.km1;
     HyperedgeWeight current_km1 = best_metrics.km1;
@@ -249,6 +252,10 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
       HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
+      HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
+      ASSERT(currentUpperBound != FlowBase::idealBlockWeight() || currentUpperBound == currentLowerBlockWeightBound());
+      ASSERT(currentUpperBound >= FlowBase::idealBlockWeight());
+      ASSERT(currentLowerBound <=  FlowBase::idealBlockWeight());
       /**
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
@@ -273,7 +280,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_imbalance = metrics::imbalance(_hg, _context);
-        current_heaviest_block_weight = metrics::heaviest_domain_weight(_hg);
+        current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+        current_smallest_block_weight = metrics::smallest_block_weight(_hg);
 
         current_km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -298,9 +306,9 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
               && (current_heaviest_block_weight < initial_heaviest_block_weight) 
               && ((static_cast<double>(current_km1) / static_cast<double>(initial_km1)) < _context.local_search.fm.km1_increase_tolerance);
         // kahypar
-        const bool improved_km1_within_balance = (current_heaviest_block_weight <= best_metrics.heaviest_domain_weight) &&
+        const bool improved_km1_within_balance = (current_heaviest_block_weight <= best_metrics.heaviest_block_weight) &&
                                                  (current_km1 < best_metrics.km1);
-        const bool improved_balance_less_equal_km1 = (current_heaviest_block_weight < best_metrics.heaviest_domain_weight) &&
+        const bool improved_balance_less_equal_km1 = (current_heaviest_block_weight < best_metrics.heaviest_block_weight) &&
                                                      (current_km1 <= best_metrics.km1);
         if ( (balancing_phase                && (improved_km1 || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))
           || (balanced_goal_optimizing_phase && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
@@ -311,6 +319,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
                                                << best_metrics.km1 << "to" << current_km1;
           best_metrics.km1 = current_km1;
           best_metrics.imbalance = current_imbalance;
+          best_metrics.heaviest_block_weight = current_heaviest_block_weight;
+          best_metrics.smallest_block_weight = current_smallest_block_weight;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
           touched_hns_since_last_improvement = 0;
@@ -352,7 +362,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));
     return FMImprovementPolicy::improvementFound(best_metrics.km1, initial_km1,
-                                                 best_metrics.heaviest_domain_weight, initial_heaviest_block_weight,
+                                                 best_metrics.heaviest_block_weight, initial_heaviest_block_weight,
                                                  currentUpperBlockWeightBound());
   }
 

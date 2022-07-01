@@ -204,7 +204,7 @@ inline void printObjectives(const Hypergraph& hypergraph, const Context& context
   LOG << "(k-1)          (minimize) =" << metrics::km1(hypergraph);
   LOG << "Absorption     (maximize) =" << metrics::absorption(hypergraph);
   LOG << "Imbalance                 =" << metrics::imbalance(hypergraph, context);
-  LOG << "Heaviest domain weight    =" << metrics::heaviest_domain_weight(hypergraph);
+  LOG << "Heaviest domain weight    =" << metrics::heaviest_block_weight(hypergraph);
 }
 
 
@@ -423,7 +423,7 @@ static inline void printLocalSearchResults(const Context& context, const Hypergr
         << (context.partition.objective == Objective::cut ? metrics::hyperedgeCut(hypergraph) :
         metrics::km1(hypergraph));
     LOG << "Final imbalance =" << metrics::imbalance(hypergraph, context);
-    LOG << "Final max_domain_weight =" << metrics::heaviest_domain_weight(hypergraph);
+    LOG << "Final max_domain_weight =" << metrics::heaviest_block_weight(hypergraph);
     LOG << "Final part sizes and weights:";
     io::printPartSizesAndWeights(hypergraph);
     LOG << "";

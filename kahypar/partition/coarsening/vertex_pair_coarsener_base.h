@@ -76,7 +76,8 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     Metrics current_metrics = { metrics::hyperedgeCut(_hg),
                                 metrics::km1(_hg),
                                 metrics::imbalance(_hg, _context),
-                                metrics::heaviest_domain_weight(_hg) };
+                                metrics::heaviest_block_weight(_hg),
+                                metrics::smallest_block_weight(_hg) };
     HyperedgeWeight initial_objective = std::numeric_limits<HyperedgeWeight>::min();
     switch (_context.partition.objective) {
       case Objective::cut:
@@ -135,7 +136,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       CoarsenerBase::performLocalSearch(refiner, refinement_nodes, current_metrics, changes);
       if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target || 
           _context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
-        _imbalances.push_back(metrics::heaviest_domain_weight(_hg));
+        _imbalances.push_back(metrics::heaviest_block_weight(_hg));
         _km1s.push_back(metrics::km1(_hg));
       } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
         _target_imbalances.push_back(refiner.currentUpperBlockWeightBound());
