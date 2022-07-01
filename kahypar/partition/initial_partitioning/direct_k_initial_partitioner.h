@@ -31,9 +31,9 @@ class DirectKInitialPartitioner : public IInitialPartitioner,
       }
       for (const HypernodeID hn : _descending_nodes) {
         if (_hg.nodeIsEnabled(hn)) {
-          PartitionID lightestBlock = _block_queue.top();
-          _hg.setNodePart(hn, lightestBlock);
-          _block_queue.increaseKeyBy(lightestBlock, _hg.nodeWeight(hn));
+          PartitionID smallestBlock = _block_queue.top();
+          _hg.setNodePart(hn, smallestBlock);
+          _block_queue.increaseKeyBy(smallestBlock, _hg.nodeWeight(hn));
         }
       }
     }

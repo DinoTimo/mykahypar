@@ -129,7 +129,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
   HypernodeWeight currentUpperBlockWeightBound() override {
     double initialPureUpper = static_cast<double>(FlowBase::idealBlockWeight() + currentBlockWeightDelta(0));
-    double initialImbalance = static_cast<double>(_initial_heaviest_block_weight);
+    double initialImbalance = static_cast<double>(_step0_heaviest_block_weight);
     uint32_t current_pseudo_step = static_cast<uint32_t>(static_cast<double>(_current_step) * (1 / (1 - _context.local_search.fm.balance_convergence_time)));
     current_pseudo_step = std::min(current_pseudo_step, _total_num_steps);
     double exponent = 1 - ((static_cast<double>(current_pseudo_step)) / static_cast<double>((FlowBase::_total_num_steps)));
@@ -139,7 +139,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
   HypernodeWeight currentLowerBlockWeightBound() { 
     double initialPureLower = static_cast<double>(FlowBase::idealBlockWeight() - currentBlockWeightDelta(0));
-    double initialImbalance = static_cast<double>(_initial_lightest_block_weight);
+    double initialImbalance = static_cast<double>(_step0_smallest_block_weight);
     uint32_t current_pseudo_step = static_cast<uint32_t>(static_cast<double>(_current_step) * (1 / (1 - _context.local_search.fm.balance_convergence_time)));
     current_pseudo_step = std::min(current_pseudo_step, _total_num_steps);
     double exponent = 1 - ((static_cast<double>(current_pseudo_step)) / static_cast<double>((FlowBase::_total_num_steps)));
@@ -173,8 +173,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     }
     if (!_initial_imbalance_set) {
       _initial_imbalance_set = true;
-      _initial_lightest_block_weight = metrics::smallest_block_weight(_hg);
-      _initial_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+      _step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
+      _step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
     }
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
@@ -1065,8 +1065,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   using FlowBase::_num_flow_nodes;
   using FlowBase::_flow_matrix;
   using FlowBase::_capacity_matrix;
-  using FlowBase::_initial_lightest_block_weight;
-  using FlowBase::_initial_heaviest_block_weight;
+  using FlowBase::_step0_smallest_block_weight;
+  using FlowBase::_step0_heaviest_block_weight;
   using FlowBase::_initial_imbalance_set;
 
 

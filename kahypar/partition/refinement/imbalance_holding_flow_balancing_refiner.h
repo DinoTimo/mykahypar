@@ -130,14 +130,14 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     uint32_t imbalance_step_offset = static_cast<uint32_t>((_context.local_search.fm.balance_convergence_time) * static_cast<double>(_total_num_steps));
     uint32_t balancing_start_step = _total_num_steps - 2 * imbalance_step_offset;
     if (_current_step < balancing_start_step) {
-      return _initial_lightest_block_weight;
+      return _step0_heaviest_block_weight;
     }
     uint32_t goal_optimizing_step = _total_num_steps - imbalance_step_offset;
     if (_current_step >= goal_optimizing_step) {
       return static_cast<HypernodeWeight>(static_cast<double>(FlowBase::idealBlockWeight()) * (1 + _context.partition.epsilon));
     }
     //f(x) = mx + c
-    double y0 = _initial_lightest_block_weight;
+    double y0 = _step0_heaviest_block_weight;
     double x0 = balancing_start_step;
     double y1 = static_cast<double>(FlowBase::idealBlockWeight()) * (1 + _context.partition.epsilon);
     double x1 = static_cast<double>(goal_optimizing_step);
@@ -165,7 +165,8 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     }
     if (!_initial_imbalance_set) {
       _initial_imbalance_set = true;
-      _initial_lightest_block_weight = metrics::heaviest_block_weight(_hg);
+      _step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+      _step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
     }
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
@@ -185,7 +186,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_block_weight;
     HypernodeWeight current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
 
-    const HypernodeWeight initial_smallest_block_weight = best_metrics.smallest_block_weight;
     HypernodeWeight current_smallest_block_weight = metrics::smallest_block_weight(_hg);
 
     const HyperedgeWeight initial_km1 = best_metrics.km1;
@@ -251,10 +251,8 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
       HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
-      HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
       ASSERT(currentUpperBound != FlowBase::idealBlockWeight() || currentUpperBound == currentLowerBlockWeightBound());
       ASSERT(currentUpperBound >= FlowBase::idealBlockWeight());
-      ASSERT(currentLowerBound <=  FlowBase::idealBlockWeight());
       /**
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
@@ -299,7 +297,7 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
          */
 
         const bool balanced_goal_optimizing_phase = currentUpperBound == FlowBase::idealBlockWeight();
-        const bool imbalanced_goal_optimizing_phase = currentUpperBound == _initial_lightest_block_weight;
+        const bool imbalanced_goal_optimizing_phase = currentUpperBound == _step0_heaviest_block_weight;
         const bool balancing_phase = !balanced_goal_optimizing_phase && !imbalanced_goal_optimizing_phase;
         // acceptance policy from jostle, but now adapted
         const bool improved_km1 = (current_km1 < best_metrics.km1);
@@ -1058,7 +1056,8 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
   using FlowBase::_num_flow_nodes;
   using FlowBase::_flow_matrix;
   using FlowBase::_capacity_matrix;
-  using FlowBase::_initial_lightest_block_weight;
+  using FlowBase::_step0_smallest_block_weight;
+  using FlowBase::_step0_heaviest_block_weight;
   using FlowBase::_initial_imbalance_set;
 
   ds::SparseMap<PartitionID, Gain> _tmp_gains;

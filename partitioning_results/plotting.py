@@ -38,7 +38,7 @@ def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfi
 #Expecting the following format for imbalance.txt: one value per line
 #Expecting the following format for target_imbalances.txt: one value per line
 def showImbalance():
-  showActualAndTarget(lowerpath, 'lightest block weight', targetlowerpath, 'target lightest block', True)
+  showActualAndTarget(lowerpath, 'smallest block weight', targetlowerpath, 'target smallest block', True)
   showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
   plt.legend()
   infoLines = readLines(infopath)
