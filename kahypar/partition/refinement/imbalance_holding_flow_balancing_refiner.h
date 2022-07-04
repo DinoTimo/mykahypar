@@ -186,6 +186,9 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_block_weight;
     HypernodeWeight current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
 
+    const double initial_standard_deviation = best_metrics.standard_deviation;
+    double current_standard_deviation = metrics::standard_deviation(_hg);
+
     HypernodeWeight current_smallest_block_weight = metrics::smallest_block_weight(_hg);
 
     const HyperedgeWeight initial_km1 = best_metrics.km1;
@@ -258,16 +261,26 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
-      uint32_t imbalance_step_offset = static_cast<uint32_t>((_context.local_search.fm.balance_convergence_time) * static_cast<double>(_total_num_steps));
-      uint32_t goal_optimizing_step = _total_num_steps - imbalance_step_offset;
-    
+      const bool balanced_goal_optimizing_phase = currentUpperBound == FlowBase::idealBlockWeight();
+      const bool imbalanced_goal_optimizing_phase = currentUpperBound == _step0_heaviest_block_weight;
+      const bool balancing_phase = !balanced_goal_optimizing_phase && !imbalanced_goal_optimizing_phase;
+      //This is equivalen to: exactly one of the 3 above bools must be true
+      ASSERT(balanced_goal_optimizing_phase || imbalanced_goal_optimizing_phase || balancing_phase);
+      ASSERT(!balanced_goal_optimizing_phase || (!imbalanced_goal_optimizing_phase && !balancing_phase));
+      ASSERT(!imbalanced_goal_optimizing_phase || (!balanced_goal_optimizing_phase && !balancing_phase));
+      ASSERT(!balancing_phase || (!imbalanced_goal_optimizing_phase && !balanced_goal_optimizing_phase));
+
       const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
-                                      FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node) && _current_step < goal_optimizing_step;
+                                      FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node);
       const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
-                    _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();      
-      if (imbalanced_but_improves_balance || balanced_and_keeps_balance) {
-        if (_hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node)) {
+                    _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound();
+      const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
+      if ( (imbalanced_goal_optimizing_phase && (!emptying_block))
+        || (balancing_phase                  && (imbalanced_but_improves_balance || balanced_and_keeps_balance))
+        || (balanced_goal_optimizing_phase   && (imbalanced_but_improves_balance || balanced_and_keeps_balance))) { 
+
+        if (emptying_block) {
           LOG << max_gain_node << " is tried to be moved from " << from_part << " to " << to_part << " at step " << _current_step;
           LOG << "is balanced_and_keeps_balance: " << balanced_and_keeps_balance;
           LOG << "is imbalanced_but_improves_balance: " << imbalanced_but_improves_balance;
@@ -282,6 +295,7 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
         current_imbalance = metrics::imbalance(_hg, _context);
         current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
         current_smallest_block_weight = metrics::smallest_block_weight(_hg);
+        current_standard_deviation = metrics::standard_deviation(_hg);
 
         current_km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -295,10 +309,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
          * or C^i = C- && W^i < W-
          * or T <= W^i && W^i < W-
          */
-
-        const bool balanced_goal_optimizing_phase = currentUpperBound == FlowBase::idealBlockWeight();
-        const bool imbalanced_goal_optimizing_phase = currentUpperBound == _step0_heaviest_block_weight;
-        const bool balancing_phase = !balanced_goal_optimizing_phase && !imbalanced_goal_optimizing_phase;
         // acceptance policy from jostle, but now adapted
         const bool improved_km1 = (current_km1 < best_metrics.km1);
         const bool same_or_better_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
@@ -322,6 +332,7 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
           best_metrics.imbalance = current_imbalance;
           best_metrics.heaviest_block_weight = current_heaviest_block_weight;
           best_metrics.smallest_block_weight = current_smallest_block_weight;
+          best_metrics.standard_deviation = current_standard_deviation;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
           touched_hns_since_last_improvement = 0;
