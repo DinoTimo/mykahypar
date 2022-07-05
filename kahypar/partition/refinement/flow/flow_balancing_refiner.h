@@ -132,7 +132,10 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     }
 
     bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
-      return _hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2;
+      return (_hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2) 
+      || ( (2 * (_hg.partWeight(from) - _hg.partWeight(to)) >= _hg.nodeWeight(node))
+          && isOverloadedBlock(from)
+          && isUnderloadedBlock(to));
     }
 
     void rollbackFlow(int last_index, const int min_cut_index) {
