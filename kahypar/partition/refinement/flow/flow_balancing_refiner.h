@@ -57,9 +57,9 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         }
         for (HypernodeID pin : _hg.pins(edge)) {
           for (PartitionID block : _hg.connectivitySet(edge)) {
-            if (!_vertex_block_pair_bitvector.at(pin * _context.partition.k + block)) {
+            if (!_vertex_block_pair_bitvector[pin * _context.partition.k + block]) {
               _quotient_edge_capacities[_hg.partID(pin) * _context.partition.k + block] += _hg.nodeWeight(pin);
-              _vertex_block_pair_bitvector.at(pin * _context.partition.k + block) = true;
+              _vertex_block_pair_bitvector[pin * _context.partition.k + block] = true;
             }
           }
         }
