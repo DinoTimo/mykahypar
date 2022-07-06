@@ -38,7 +38,7 @@ def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfi
 #Expecting the following format for imbalance.txt: one value per line
 #Expecting the following format for target_imbalances.txt: one value per line
 def showImbalance():
-  showActualAndTarget(lowerpath, 'smallest block weight', targetlowerpath, 'target smallest block', True)
+  showActualAndTarget(lowerpath, 'smallest block weight', targetlowerpath, 'target smallest block', False)
   showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
   plt.legend()
   infoLines = readLines(infopath)
@@ -56,9 +56,10 @@ def showKm1():
   plt.hlines(y=finalkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='r', label='final km1: ' + str(finalkm1))
 
   infoLines = readLines(infopath)
-  infoArr = infoLines[0].split(" ")
-  graphFile = infoArr[len(infoArr) - 1]
-  kahyparkm1 = getKm1FromFile(graphFile)
+  graphFile = getLastWordFromLine(infoLines[0])
+  k = getLastWordFromLine(infoLines[1])
+  e = getLastWordFromLine(infoLines[2])
+  kahyparkm1 = getKm1FromFile(graphFile, k, e)
   if kahyparkm1 != 0:
     plt.hlines(y=kahyparkm1, xmin=0, xmax=num - 1 , linewidth=1, color='y', label='kahypar km1: ' + str(kahyparkm1))
     
@@ -66,15 +67,19 @@ def showKm1():
   plt.plot(floatify(lines), color='b', label='km1')
   plt.legend()
 
+def getLastWordFromLine(line):
+  words = line.split(" ")
+  return words[len(words) - 1]
 
-def getKm1FromFile(graphFileName):
+
+def getKm1FromFile(graphFileName, k, e):
   lines = readLines(resultspath)
   for line in lines:
     lineElements = line.split(" ")
-    if len(lineElements) != 2:
+    if len(lineElements) != 4:
       print("some Error")
-    if lineElements[0] == graphFileName:
-      return float(lineElements[1])
+    if lineElements[0] == graphFileName and lineElements[1] == k and lineElements[2] == e:
+      return float(lineElements[3])
   return 0
 
 def floatify(arr):
