@@ -58,8 +58,6 @@ class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solv
       std::pair<full_square_matrix<double>, full_square_matrix<double>> LU_pair(LU_decompose(A, N)); // TODO use proper matrix types
       full_square_matrix<double> L(LU_pair.first);
       full_square_matrix<double> U(LU_pair.second);
-      L.print();
-      U.print();
       std::vector<double> y = forwardSubstitute(L, b, N);
       std::vector<double> x = backwardSubstitute(U, y, N);
       return x;
@@ -72,22 +70,6 @@ class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solv
       full_square_matrix<double> L(N, 1);
       // TODO use upper matrix
       full_square_matrix<double> U(A);
-
-      std::cout << "N:" << std::to_string(N) << std::endl;
-
-      std::cout << "U" << std::endl;
-      U.print();
-      std::cout << "L" << std::endl;
-      L.print();
-      ASSERT(L.at(0, 0) == 1);
-      ASSERT(L.at(1, 1) == 1);
-      ASSERT(L.at(2, 2) == 1);
-      ASSERT(L.at(0, 2) == 0);
-      ASSERT(L.at(0, 1) == 0);
-      ASSERT(L.at(1, 2) == 0);
-      ASSERT(L.at(1, 0) == 0);
-      ASSERT(L.at(2, 1) == 0);
-      ASSERT(L.at(2, 0) == 0);
       for (size_t i = 0; i < N - 1; i++) {
         for (size_t k = i + 1; k < N; k++) {
           ASSERT(U.at(i, i) > 0.0001 || U.at(i, i) < -0.0001);
@@ -97,10 +79,6 @@ class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solv
           }
         }
       }
-      std::cout << "U2" << std::endl;
-      U.print();
-      std::cout << "L2" << std::endl;
-      L.print();
       static std::pair<full_square_matrix<double>, full_square_matrix<double>> pair(L, U);
       return pair;
     }

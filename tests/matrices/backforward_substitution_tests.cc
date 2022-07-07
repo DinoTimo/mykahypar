@@ -133,20 +133,7 @@ TEST(FullEquationSolvingTest, WorksAsExpected) {
   std::vector<double> b{80, 95, 85};
   LU_Decomp_matrix_solver solver;
   std::vector<double> x(solver.solve(matrix, b, size));
-  std::cout << "x:" << std::endl;
-  std::cout << std::to_string(x[0]) << std::endl; 
-  std::cout << std::to_string(x[1]) << std::endl; 
-  std::cout << std::to_string(x[2]) << std::endl; 
-  ASSERT(almostEquals(x, std::vector<double>{1, 2, 3}));
-
-  
+  ASSERT(almostEquals(x, std::vector<double>{1, 2, 3}));  
 }
-
-
-
-
-
-
-
 }
 }
