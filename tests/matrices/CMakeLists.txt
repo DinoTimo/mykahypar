@@ -1,0 +1,1 @@
+add_gmock_test(backforward_substitution_tests backforward_substitution_tests.cc)

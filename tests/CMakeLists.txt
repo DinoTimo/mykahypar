@@ -11,4 +11,5 @@ add_subdirectory(partition/preprocessing)
 add_subdirectory(partition/coarsening)
 add_subdirectory(partition/initial_partitioning)
 add_subdirectory(partition/refinement)
+add_subdirectory(matrices)
 
