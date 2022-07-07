@@ -128,7 +128,7 @@ class FlowSolver {
     FlowSolver& operator= (const FlowSolver&) = delete;
     FlowSolver& operator= (FlowSolver&&) = delete;
 
-    std::vector<Capacity> solveFlow(const std::vector<Capacity> input, const Node source, const Node sink, const bool respect_Node_Capacity) {
+    std::vector<Capacity> solveFlow(const std::vector<Capacity> input, const Node source, const Node sink, const bool respect_node_capacities) {
       init(input, source, sink);
       do {
         _queue.insert(_queue.begin(), _source);
@@ -140,7 +140,7 @@ class FlowSolver {
           for (Edge e : curEdges) {
             if (_pred[e.end] == _invalid_edge && e.end != _source &&
               capacity(e) > flow(e) &&
-              (!respect_Node_Capacity || capacity(e.start) > flow(e.start))) { 
+              (!respect_node_capacities || capacity(e.start) > flow(e.start))) { 
               _pred[e.end] = e;
               _queue.insert(_queue.begin(), e.end);
             }
@@ -153,7 +153,7 @@ class FlowSolver {
           Flow cur_flow = std::numeric_limits<Flow>::max();
           for (Edge e = _pred[_sink]; e != _invalid_edge; e = _pred[e.start]) {
             cur_flow = std::min(cur_flow, capacity(e) - flow(e));
-            if (respect_Node_Capacity) {
+            if (respect_node_capacities) {
               cur_flow = std::min(cur_flow, capacity(e.start) - flow(e.start));
             }
             pathLen++;

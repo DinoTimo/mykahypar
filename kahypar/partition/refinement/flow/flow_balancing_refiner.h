@@ -9,6 +9,8 @@
 #include "kahypar/partition/refinement/flow/graph_flow_solver.h"
 #include "kahypar/partition/refinement/flow/flow_balancing_refiner.h"
 #include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
+#include "kahypar/partition/refinement/matrices/matrix.h"
+#include "kahypar/partition/refinement/matrices/matrix_solver.h"
 
 namespace kahypar {
 
@@ -42,7 +44,13 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _quotient_edge_capacities(context.partition.k * context.partition.k, 0),
-      _vertex_block_pair_bitvector(hypergraph.initialNumNodes() * context.partition.k, false)  { }
+      _vertex_block_pair_bitvector(hypergraph.initialNumNodes() * context.partition.k, false),
+      _adjacency_bitmap(context.partition.k * (context.partition.k - 1), 0),
+      _degree_vector(context.partition.k, 0),
+      _laplace_matrix(context.partition.k * context.partition.k, 0),
+      _block_weight_diff_vector(context.partition.k, 0),
+      _matrix_solver(),
+      _flow_vector() { }
 
     HypernodeWeight idealBlockWeight() {
       return _hg.totalWeight() / _context.partition.k;
@@ -132,10 +140,16 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     }
 
     bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
+      /*
       return (_hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2) 
       || ( (2 * (_hg.partWeight(from) - _hg.partWeight(to)) >= _hg.nodeWeight(node))
           && isOverloadedBlock(from)
-          && isUnderloadedBlock(to));
+          && isUnderloadedBlock(to));*/
+      return _hg.nodeWeight(node) <= 2 * (_flow_vector[from] - _flow_vector[to]);
+    }
+
+    std::vector<HypernodeWeight> solveFlow(HypernodeID source, HypernodeID sink, bool useNodeCapacities) {
+      return _flow_solver.solveFlow(_capacity_matrix, source, sink, useNodeCapacities);
     }
 
     void rollbackFlow(int last_index, const int min_cut_index) {
@@ -153,6 +167,57 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
       _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
       _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+      _flow_vector[from_part] -= _hg.nodeWeight(hn);
+      _flow_vector[to_part] += _hg.nodeWeight(hn);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------------
+    // ABOVE ACTUAL FLOW CALCULATION ON QUTIOENT GRAPH
+    // BELOW LAPLACE MATRIX BALANICNG FLOW CALCULATION
+    // ------------------------------------------------------------------------------------------------------------------------
+    
+    void calculateLaplaceMatrix() {
+        calculateAdjacency();
+        std::vector<double> b(_context.partition.k, 0);
+        for (int i = 0; i < _context.partition.k; i++) {
+          for (int j = 0; j < _context.partition.k; j++) {
+            _laplace_matrix[i * _context.partition.k + j] = (i == j) ? _degree_vector[i] : _adjacency_bitmap[i * (_context.partition.k - 1) + j];
+          }  
+        }
+        for (int i = 0; i <_context.partition.k; i++) {
+          _block_weight_diff_vector[i] = _hg.partWeight(i) - idealBlockWeight();
+        }
+    }
+
+    void calculateAdjacency() {
+      std::fill(_adjacency_bitmap.begin(), _adjacency_bitmap.end(), false);
+      std::fill(_degree_vector.begin(), _degree_vector.end(), 0);
+      for (HyperedgeID edge : _hg.edges()) {
+        if (_hg.connectivitySet(edge).size() <= 1) {
+          continue;
+        }
+        for (PartitionID block1 : _hg.connectivitySet(edge)) {
+          for (PartitionID block2 : _hg.connectivitySet(edge)) {
+            if (block1 == block2) continue;
+            int index = block1 * (_context.partition.k - 1) + block2;
+            if (_adjacency_bitmap[index]) continue;
+            _degree_vector[block1] += 1;
+            _degree_vector[block2]++;
+            _adjacency_bitmap[index] = true;
+          }
+        }
+        
+      }
+    }
+
+    void solveBalancingEquations() {
+      //solve Mx = b, where b is the diff from ideal weight and M the laplacian matrix
+      _flow_vector = _matrix_solver.solve(
+        matrices::full_square_matrix<double>(std::vector<double>(_laplace_matrix.begin(), _laplace_matrix.end())),
+        std::vector<double>(_block_weight_diff_vector.begin(), _block_weight_diff_vector.end()),
+        _context.partition.k);
+      std::cout << "flow vector" << std::endl;
+      std::cout << joinVector(_flow_vector, "[" , ",", "]") << std::endl;
     }
 
     FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
@@ -167,7 +232,13 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     std::vector<HypernodeWeight> _capacity_matrix;
     std::vector<HypernodeWeight> _quotient_edge_capacities;
     std::vector<bool> _vertex_block_pair_bitvector;
-
+    std::vector<bool> _adjacency_bitmap;
+    std::vector<HypernodeWeight> _degree_vector;
+    std::vector<HypernodeWeight> _laplace_matrix;
+    std::vector<HypernodeWeight> _block_weight_diff_vector;
+    matrices::LU_Decomp_matrix_solver _matrix_solver;
+    std::vector<double> _flow_vector;
+    
     using Base::_context;
     using Base::_hg;
     using Base::_performed_moves;

@@ -210,14 +210,11 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     const double beta = log(_hg.currentNumNodes());
 
     if (_current_step % 1 == 0) { 
-      FlowBase::calculateCapacityMatrix();
-      _flow_matrix = _flow_solver.solveFlow(_capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
+      //FlowBase::calculateCapacityMatrix();
+      //FlowBase::solveFlow(_context.partition.k, _context.partition.k + 1, false);
+      FlowBase::calculateLaplaceMatrix();
+      FlowBase::solveBalancingEquations();
     } 
-    bool printing = _current_step <= 1 || _current_step == _total_num_steps / 2 || _current_step >= _total_num_steps - 2;
-    if (printing) {
-      LOG << kahypar::joinVector(_capacity_matrix, "[", ",", "]");
-      LOG << kahypar::joinVector(_flow_matrix, "[", ",", "]");
-    }
 
     DBG << "Current ideal block weight is: " << std::to_string(FlowBase::idealBlockWeight()) << " at step: " << std::to_string(_current_step) << " of a total of " << std::to_string(_total_num_steps) << " steps."; 
     DBG << "Current upper bound block weight is: " << std::to_string(currentUpperBlockWeightBound()); 
@@ -1073,8 +1070,6 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   using FlowBase::_current_step;
   using FlowBase::_previous_step;
   using FlowBase::_num_flow_nodes;
-  using FlowBase::_flow_matrix;
-  using FlowBase::_capacity_matrix;
   using FlowBase::_step0_smallest_block_weight;
   using FlowBase::_step0_heaviest_block_weight;
   using FlowBase::_initial_imbalance_set;
