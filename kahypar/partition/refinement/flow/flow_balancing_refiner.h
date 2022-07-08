@@ -11,11 +11,12 @@
 #include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
 #include "kahypar/partition/refinement/matrices/matrix.h"
 #include "kahypar/partition/refinement/matrices/matrix_solver.h"
+#include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
 
 namespace kahypar {
 
 //This class does not use the type 'Derived' and only passes it to the FMRefinerBase class
-template <typename RollbackElement = Mandatory, typename Derived = Mandatory>
+template <typename RollbackElement = Mandatory, typename FlowExecutionPolicy = Mandatory, typename Derived = Mandatory>
 class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
   private:
@@ -39,7 +40,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _initial_imbalance_set(false),
       _total_num_steps(0),
       _current_step(0),
-      _previous_step(0),
       _num_flow_nodes(context.partition.k + 2),
       _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
@@ -50,7 +50,8 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _laplace_matrix(context.partition.k * context.partition.k, 0),
       _block_weight_diff_vector(context.partition.k, 0),
       _matrix_solver(),
-      _flow_vector() { }
+      _flow_vector(),
+      _flow_execution_policy() { }
 
     HypernodeWeight idealBlockWeight() {
       return _hg.totalWeight() / _context.partition.k;
@@ -177,16 +178,16 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     // ------------------------------------------------------------------------------------------------------------------------
     
     void calculateLaplaceMatrix() {
-        calculateAdjacency();
-        std::vector<double> b(_context.partition.k, 0);
-        for (int i = 0; i < _context.partition.k; i++) {
-          for (int j = 0; j < _context.partition.k; j++) {
-            _laplace_matrix[i * _context.partition.k + j] = (i == j) ? _degree_vector[i] : _adjacency_bitmap[i * (_context.partition.k - 1) + j];
-          }  
-        }
-        for (int i = 0; i <_context.partition.k; i++) {
-          _block_weight_diff_vector[i] = _hg.partWeight(i) - idealBlockWeight();
-        }
+      calculateAdjacency();
+      std::vector<double> b(_context.partition.k, 0);
+      for (int i = 0; i < _context.partition.k; i++) {
+        for (int j = 0; j < _context.partition.k; j++) {
+          _laplace_matrix[i * _context.partition.k + j] = (i == j) ? _degree_vector[i] : _adjacency_bitmap[i * (_context.partition.k - 1) + j];
+        }  
+      }
+      for (int i = 0; i <_context.partition.k; i++) {
+        _block_weight_diff_vector[i] = _hg.partWeight(i) - idealBlockWeight();
+      }
     }
 
     void calculateAdjacency() {
@@ -226,7 +227,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     bool _initial_imbalance_set;
     uint32_t _total_num_steps;
     uint32_t _current_step;
-    uint32_t _previous_step;
     PartitionID _num_flow_nodes;
     std::vector<HypernodeWeight> _flow_matrix;
     std::vector<HypernodeWeight> _capacity_matrix;
@@ -238,6 +238,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     std::vector<HypernodeWeight> _block_weight_diff_vector;
     matrices::LU_Decomp_matrix_solver _matrix_solver;
     std::vector<double> _flow_vector;
+    FlowExecutionPolicy _flow_execution_policy;
     
     using Base::_context;
     using Base::_hg;

@@ -61,6 +61,9 @@ using RatingPolicies = meta::Typelist<RatingScorePolicies, HeavyNodePenaltyPolic
                                       CommunityPolicies, PartitionPolicies, AcceptancePolicies,
                                       FixedVertexAcceptancePolicies>;
 
+using FlowRefiningPolicies = meta::Typelist<StoppingPolicyClasses, FlowExecutionPolicyClasses>;
+
+
 using MLCoarseningDispatcher = meta::StaticMultiDispatchFactory<MLCoarsener,
                                                                 ICoarsener,
                                                                 RatingPolicies>;
@@ -87,11 +90,11 @@ using KWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<KWayKMin
 
 using BalanceApproachingKWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<BalanceApproachingKwayKMinusOneRefiner,
                                                                         IRefiner,
-                                                                        meta::Typelist<StoppingPolicyClasses> >;
+                                                                        FlowRefiningPolicies>;
 
 using ImbalanceHoldingKWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<ImbalanceHoldingKwayKMinusOneRefiner,
                                                                         IRefiner,
-                                                                        meta::Typelist<StoppingPolicyClasses> >;
+                                                                        FlowRefiningPolicies>;
 
 using TwoWayHyperFlowCutterFactoryDispatcher = meta::StaticMultiDispatchFactory<TwoWayHyperFlowCutterRefiner,
                                                                                 IRefiner,

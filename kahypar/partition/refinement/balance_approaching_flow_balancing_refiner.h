@@ -40,9 +40,9 @@
 #include "kahypar/meta/template_parameter_to_string.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
-#include "kahypar/partition/refinement/flow/graph_flow_solver.h"
 #include "kahypar/partition/refinement/flow/flow_balancing_refiner.h"
 #include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
+#include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
@@ -52,22 +52,23 @@
 
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
+          class FlowExecutionPolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
 class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
-          private FlowBalancingRefiner<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy>>{
+          private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
   static constexpr HypernodeID hn_to_debug = 5589;
 
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
+  using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, 
                                                                 FMImprovementPolicy> >;
 
-  using FlowBase = FlowBalancingRefiner<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
+  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
                                                                 FMImprovementPolicy> >;
 
-  friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy,
+  friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -114,6 +115,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
       unused(max_gain);
       _pq.initialize(_hg.initialNumNodes());
 #endif
+      _flow_execution_policy.initialize(_hg, _context);
       _is_initialized = true;
     }
     _gain_cache.clear();
@@ -194,10 +196,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_block_weight;
     HypernodeWeight current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
 
-    const double initial_standard_deviation = best_metrics.standard_deviation;
     double current_standard_deviation = metrics::standard_deviation(_hg);
 
-    const HypernodeWeight initial_smallest_block_weight = best_metrics.smallest_block_weight;
     HypernodeWeight current_smallest_block_weight = metrics::smallest_block_weight(_hg);
 
     const HyperedgeWeight initial_km1 = best_metrics.km1;
@@ -209,12 +209,12 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
-    if (_current_step % 1 == 0) { 
-      //FlowBase::calculateCapacityMatrix();
-      //FlowBase::solveFlow(_context.partition.k, _context.partition.k + 1, false);
+    //FlowBase::calculateCapacityMatrix();
+    //FlowBase::solveFlow(_context.partition.k, _context.partition.k + 1, false);
+    if (_flow_execution_policy.executeFlow(_hg) || _current_step <= 1) {
       FlowBase::calculateLaplaceMatrix();
       FlowBase::solveBalancingEquations();
-    } 
+    }
 
     DBG << "Current ideal block weight is: " << std::to_string(FlowBase::idealBlockWeight()) << " at step: " << std::to_string(_current_step) << " of a total of " << std::to_string(_total_num_steps) << " steps."; 
     DBG << "Current upper bound block weight is: " << std::to_string(currentUpperBlockWeightBound()); 
@@ -320,7 +320,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
               && ((static_cast<double>(current_km1) / static_cast<double>(best_metrics.km1)) <= _context.local_search.fm.km1_increase_tolerance);
         // kahypar
         const bool improved_km1_within_balance = (current_heaviest_block_weight <= currentUpperBound) &&
-                                                 (current_km1 < best_metrics.km1);
+                                                 improved_km1;
         const bool improved_balance_less_equal_km1 = better_balance &&
                                                      (current_km1 <= best_metrics.km1);
         if ( ((balancing_phase)                && (improved_km1_within_balance || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))
@@ -1065,14 +1065,13 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   using Base::_performed_moves;
   using Base::_hns_to_activate;
 
-  using FlowBase::_flow_solver;
   using FlowBase::_total_num_steps;
   using FlowBase::_current_step;
-  using FlowBase::_previous_step;
   using FlowBase::_num_flow_nodes;
   using FlowBase::_step0_smallest_block_weight;
   using FlowBase::_step0_heaviest_block_weight;
   using FlowBase::_initial_imbalance_set;
+  using FlowBase::_flow_execution_policy;
 
 
   ds::SparseMap<PartitionID, Gain> _tmp_gains;
@@ -1095,6 +1094,6 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   ds::FastResetFlagArray<> _unremovable_he_parts;
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
-  
+
 };
 }  // namespace kahypar

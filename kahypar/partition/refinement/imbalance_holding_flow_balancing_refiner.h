@@ -42,6 +42,7 @@
 #include "kahypar/partition/refinement/flow/graph_flow_solver.h"
 #include "kahypar/partition/refinement/flow/flow_balancing_refiner.h"
 #include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
+#include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
@@ -51,22 +52,23 @@
 
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
+          class FlowExecutionPolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrImbalanceAllowed>
 class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner, 
-        private FlowBalancingRefiner<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy, FMImprovementPolicy>>{
+        private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
   static constexpr HypernodeID hn_to_debug = 5589;
 
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy,
+  using Base = FMRefinerBase<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
                                                                 FMImprovementPolicy> >;
 
-  using FlowBase = FlowBalancingRefiner<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy,
+  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
                                                                 FMImprovementPolicy> >;
 
-  friend class FMRefinerBase<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy,
+  friend class FMRefinerBase<RollbackInfo, ImbalanceHoldingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -113,6 +115,7 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
       unused(max_gain);
       _pq.initialize(_hg.initialNumNodes());
 #endif
+      _flow_execution_policy.initialize(_hg, _context);
       _is_initialized = true;
     }
     _gain_cache.clear();
@@ -186,7 +189,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
     const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_block_weight;
     HypernodeWeight current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
 
-    const double initial_standard_deviation = best_metrics.standard_deviation;
     double current_standard_deviation = metrics::standard_deviation(_hg);
 
     HypernodeWeight current_smallest_block_weight = metrics::smallest_block_weight(_hg);
@@ -200,10 +202,11 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
-    if (_previous_step != _current_step) {
-      _previous_step = _current_step;
-      FlowBase::calculateCapacityMatrix();
-      _flow_matrix = _flow_solver.solveFlow(_capacity_matrix, _context.partition.k, _context.partition.k + 1, false);
+    if (_flow_execution_policy.executeFlow(_hg)) { 
+      //FlowBase::calculateCapacityMatrix();
+      //FlowBase::solveFlow(_context.partition.k, _context.partition.k + 1, false);
+      FlowBase::calculateLaplaceMatrix();
+      FlowBase::solveBalancingEquations();
     } 
     bool printing = _current_step <= 1 || _current_step == _total_num_steps / 2 || _current_step >= _total_num_steps - 2;
     if (printing) {
@@ -310,14 +313,14 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
          * or T <= W^i && W^i < W-
          */
         // acceptance policy from jostle, but now adapted
-        const bool improved_km1 = (current_km1 < best_metrics.km1);
+        const bool improved_km1 = current_km1 < best_metrics.km1;
         const bool same_or_better_km1_better_balance = (current_km1 == best_metrics.km1) && (current_heaviest_block_weight < initial_heaviest_block_weight);
         const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_heaviest_block_weight)
               && (current_heaviest_block_weight < initial_heaviest_block_weight) 
               && ((static_cast<double>(current_km1) / static_cast<double>(initial_km1)) < _context.local_search.fm.km1_increase_tolerance);
         // kahypar
         const bool improved_km1_within_balance = (current_heaviest_block_weight <= best_metrics.heaviest_block_weight) &&
-                                                 (current_km1 < best_metrics.km1);
+                                                 improved_km1;
         const bool improved_balance_less_equal_km1 = (current_heaviest_block_weight < best_metrics.heaviest_block_weight) &&
                                                      (current_km1 <= best_metrics.km1);
         if ( (imbalanced_goal_optimizing_phase && (improved_km1) )
@@ -1063,13 +1066,13 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
   using FlowBase::_flow_solver;
   using FlowBase::_total_num_steps;
   using FlowBase::_current_step;
-  using FlowBase::_previous_step;
   using FlowBase::_num_flow_nodes;
   using FlowBase::_flow_matrix;
   using FlowBase::_capacity_matrix;
   using FlowBase::_step0_smallest_block_weight;
   using FlowBase::_step0_heaviest_block_weight;
   using FlowBase::_initial_imbalance_set;
+  using FlowBase::_flow_execution_policy;
 
   ds::SparseMap<PartitionID, Gain> _tmp_gains;
 
@@ -1091,6 +1094,6 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
   ds::FastResetFlagArray<> _unremovable_he_parts;
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
-  
+
 };
 }  // namespace kahypar
