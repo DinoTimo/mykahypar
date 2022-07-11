@@ -317,9 +317,6 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
                                                      (current_km1 <= best_metrics.km1);
         if ( ((balancing_phase)                && (improved_km1_within_balance || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))
           || ((balanced_goal_optimizing_phase) && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
-          if (_current_step >= 10000) {
-            LOG << "optimizing phase at step " << _current_step << " with balanced_goal_optimizing_phase: " << balanced_goal_optimizing_phase;
-          }
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
           DBGC(current_km1 < best_metrics.km1) << "KWayFM improved cut from "

@@ -110,36 +110,14 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         return false;
       }
       PartitionID source = _context.partition.k;
-      PartitionID sink = source + 1; /*
-      std::vector<HypernodeWeight> modified_capacity_matrix(_capacity_matrix);
-      for (int i = 0; i < _context.partition.k; i++) {
-        if (isOverloadedBlock(i)) {
-          modified_capacity_matrix[source * _num_flow_nodes + i] = (i == from) ? weight : 0; 
-          modified_capacity_matrix[i * _num_flow_nodes + sink] = 0; 
-        } else if (isUnderloadedBlock(i)) {
-          modified_capacity_matrix[i * _num_flow_nodes + sink] = (i == to) ? weight : 0; 
-          modified_capacity_matrix[source * _num_flow_nodes + i] = 0;
-        } else {
-          modified_capacity_matrix[source * _num_flow_nodes + i] = 0;
-          modified_capacity_matrix[i * _num_flow_nodes + sink] = 0;
-        }
-      }
-      std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(modified_capacity_matrix, source, sink, false));
-      ASSERT(tryout_flow[source * _num_flow_nodes + from] == tryout_flow[to * _num_flow_nodes + sink]);*/
+      PartitionID sink = source + 1;
       std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, from, to, false));
       ASSERT(tryout_flow[from * _num_flow_nodes + from] - _flow_matrix[from * _num_flow_nodes + from] 
           == tryout_flow[to * _num_flow_nodes + to]     - _flow_matrix[to * _num_flow_nodes + to]);
-      //if (2 * tryout_flow[source * _num_flow_nodes + from] >= weight) {
       if (2 * (tryout_flow[from * _num_flow_nodes + from] - _flow_matrix[from * _num_flow_nodes + from]) >= weight) {
-        /*
-        for (size_t i = 0; i < _flow_matrix.size(); i++) {
-          _flow_matrix[i] += tryout_flow[i];
-        }
-        */
         _flow_matrix = tryout_flow;
         _flow_matrix[source * _num_flow_nodes + from] += weight;
         _flow_matrix[to * _num_flow_nodes + sink] += weight;
-        //*/
         return true;
       } 
       return false;
