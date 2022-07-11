@@ -202,12 +202,9 @@ class ImbalanceHoldingKwayKMinusOneRefiner final : public IRefiner,
 
     const double beta = log(_hg.currentNumNodes());
 
-    if (_flow_execution_policy.executeFlow(_hg)) { 
-      //FlowBase::calculateCapacityMatrix();
-      //FlowBase::solveFlow(_context.partition.k, _context.partition.k + 1, false);
-      FlowBase::calculateLaplaceMatrix();
-      FlowBase::solveBalancingEquations();
-    } 
+    if (_flow_execution_policy.executeFlow(_hg) || _current_step <= 1) {
+      FlowBase::init();
+    }
     bool printing = _current_step <= 1 || _current_step == _total_num_steps / 2 || _current_step >= _total_num_steps - 2;
     if (printing) {
       LOG << kahypar::joinVector(_capacity_matrix, "[", ",", "]");

@@ -56,6 +56,98 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     HypernodeWeight idealBlockWeight() {
       return _hg.totalWeight() / _context.partition.k;
     }
+    
+    bool isOverloadedBlock(PartitionID block) {
+      return _hg.partWeight(block) > idealBlockWeight();
+    }
+
+    bool isUnderloadedBlock(PartitionID block) {
+      return _hg.partWeight(block) < idealBlockWeight();
+    }
+
+    void init() {
+      if (false) {
+        calculateLaplaceMatrix();
+        solveBalancingEquations();
+      } else {
+        calculateCapacityMatrix();
+      }
+    }
+
+    bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
+      if (false) {
+        return _hg.nodeWeight(node) <= 2 * (_flow_vector[from] - _flow_vector[to]);
+      } else {
+        return tryToFindFlow(from, to, _hg.nodeWeight(node));
+      }
+    }
+
+    void rollbackFlow(int last_index, const int min_cut_index) {
+      DBG << "min_cut_index=" << min_cut_index;
+      DBG << "last_index=" << last_index;
+      while (last_index != min_cut_index) {
+        const HypernodeID hn = _performed_moves[last_index].hn;
+        const PartitionID from_part = _performed_moves[last_index].to_part;
+        const PartitionID to_part = _performed_moves[last_index].from_part;
+        updateFlow(hn, from_part, to_part);
+        --last_index;
+      }
+    }
+
+    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
+      if (false) {
+      _flow_vector[from_part] -= _hg.nodeWeight(hn);
+      _flow_vector[to_part] += _hg.nodeWeight(hn);
+      } else {
+      _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
+      _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+      }
+    }
+
+  private:
+    bool tryToFindFlow(PartitionID from, PartitionID to, HypernodeWeight weight) {
+      if (_capacity_matrix[from * _num_flow_nodes + to] < weight) {
+        return false;
+      }
+      PartitionID source = _context.partition.k;
+      PartitionID sink = source + 1; /*
+      std::vector<HypernodeWeight> modified_capacity_matrix(_capacity_matrix);
+      for (int i = 0; i < _context.partition.k; i++) {
+        if (isOverloadedBlock(i)) {
+          modified_capacity_matrix[source * _num_flow_nodes + i] = (i == from) ? weight : 0; 
+          modified_capacity_matrix[i * _num_flow_nodes + sink] = 0; 
+        } else if (isUnderloadedBlock(i)) {
+          modified_capacity_matrix[i * _num_flow_nodes + sink] = (i == to) ? weight : 0; 
+          modified_capacity_matrix[source * _num_flow_nodes + i] = 0;
+        } else {
+          modified_capacity_matrix[source * _num_flow_nodes + i] = 0;
+          modified_capacity_matrix[i * _num_flow_nodes + sink] = 0;
+        }
+      }
+      std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(modified_capacity_matrix, source, sink, false));
+      ASSERT(tryout_flow[source * _num_flow_nodes + from] == tryout_flow[to * _num_flow_nodes + sink]);*/
+      std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, from, to, false));
+      ASSERT(tryout_flow[from * _num_flow_nodes + from] - _flow_matrix[from * _num_flow_nodes + from] 
+          == tryout_flow[to * _num_flow_nodes + to]     - _flow_matrix[to * _num_flow_nodes + to]);
+      //if (2 * tryout_flow[source * _num_flow_nodes + from] >= weight) {
+      if (2 * (tryout_flow[from * _num_flow_nodes + from] - _flow_matrix[from * _num_flow_nodes + from]) >= weight) {
+        /*
+        for (size_t i = 0; i < _flow_matrix.size(); i++) {
+          _flow_matrix[i] += tryout_flow[i];
+        }
+        */
+        _flow_matrix = tryout_flow;
+        _flow_matrix[source * _num_flow_nodes + from] += weight;
+        _flow_matrix[to * _num_flow_nodes + sink] += weight;
+        //*/
+        return true;
+      } 
+      return false;
+    }
+
+    std::vector<HypernodeWeight> solveFlow(HypernodeID source, HypernodeID sink) {
+      return _flow_solver.solveFlow(_capacity_matrix, source, sink, false);
+    }
 
     void initQuotientEdgeCapacities() {
       std::fill(_vertex_block_pair_bitvector.begin(), _vertex_block_pair_bitvector.end(), false);
@@ -77,6 +169,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     
     void calculateCapacityMatrix() {
       if (_context.local_search.fm.flow_model == BalancingFlowModel::finite_edges) {
+        //Calculate the sum of weight of border notes of each block
         initQuotientEdgeCapacities();
       }
       PartitionID source = _context.partition.k;
@@ -106,10 +199,11 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
       for (int i = 0; i < source; i++) {
         for (int j = i + 1; j < source; j++) {
-          HypernodeWeight & capacity = _capacity_matrix[i * _num_flow_nodes + j]; 
-          capacity = capacity > 0 ? capacity : _hg.totalWeight() / (source);
-          capacity = _capacity_matrix[j * _num_flow_nodes + i]; 
-          capacity = capacity > 0 ? capacity : _hg.totalWeight() / (source);
+          size_t index = i * _num_flow_nodes + j;
+          HypernodeWeight pityWeight = _hg.totalWeight() / source;
+          _capacity_matrix[index] = _capacity_matrix[index] > 0 ? _capacity_matrix[index] : pityWeight;
+          index = j * _num_flow_nodes + i;
+          _capacity_matrix[index] = _capacity_matrix[index] > 0 ? _capacity_matrix[index] : pityWeight; 
         }
       }
       
@@ -130,46 +224,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
     HypernodeWeight calculateQuotientEdgeCapacity(PartitionID first, PartitionID second) {
       return _quotient_edge_capacities[first * _context.partition.k + second];
-    }
-    
-    bool isOverloadedBlock(PartitionID block) {
-      return _hg.partWeight(block) > idealBlockWeight();
-    }
-
-    bool isUnderloadedBlock(PartitionID block) {
-      return _hg.partWeight(block) < idealBlockWeight();
-    }
-
-    bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
-      /*
-      return (_hg.nodeWeight(node) <= _flow_matrix[from * _num_flow_nodes + to] * 2) 
-      || ( (2 * (_hg.partWeight(from) - _hg.partWeight(to)) >= _hg.nodeWeight(node))
-          && isOverloadedBlock(from)
-          && isUnderloadedBlock(to));*/
-      return _hg.nodeWeight(node) <= 2 * (_flow_vector[from] - _flow_vector[to]);
-    }
-
-    std::vector<HypernodeWeight> solveFlow(HypernodeID source, HypernodeID sink, bool useNodeCapacities) {
-      return _flow_solver.solveFlow(_capacity_matrix, source, sink, useNodeCapacities);
-    }
-
-    void rollbackFlow(int last_index, const int min_cut_index) {
-      DBG << "min_cut_index=" << min_cut_index;
-      DBG << "last_index=" << last_index;
-      while (last_index != min_cut_index) {
-        const HypernodeID hn = _performed_moves[last_index].hn;
-        const PartitionID from_part = _performed_moves[last_index].to_part;
-        const PartitionID to_part = _performed_moves[last_index].from_part;
-        updateFlow(hn, from_part, to_part);
-        --last_index;
-      }
-    }
-
-    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
-      _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
-      _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
-      _flow_vector[from_part] -= _hg.nodeWeight(hn);
-      _flow_vector[to_part] += _hg.nodeWeight(hn);
     }
 
     // ------------------------------------------------------------------------------------------------------------------------
@@ -221,6 +275,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       std::cout << joinVector(_flow_vector, "[" , ",", "]") << std::endl;
     }
 
+  protected:
     FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
     HypernodeWeight _step0_smallest_block_weight;
     HypernodeWeight _step0_heaviest_block_weight;
