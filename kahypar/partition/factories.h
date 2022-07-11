@@ -42,6 +42,7 @@
 #include "kahypar/partition/refinement/balance_approaching_flow_balancing_refiner.h"
 #include "kahypar/partition/refinement/imbalance_holding_flow_balancing_refiner.h"
 #include "kahypar/partition/refinement/policies/fm_stop_policy.h"
+#include "kahypar/partition/refinement/policies/fm_acceptance_policy.h"
 #include "kahypar/partition/bin_packing/i_bin_packer.h"
 
 namespace kahypar {
@@ -61,7 +62,7 @@ using RatingPolicies = meta::Typelist<RatingScorePolicies, HeavyNodePenaltyPolic
                                       CommunityPolicies, PartitionPolicies, AcceptancePolicies,
                                       FixedVertexAcceptancePolicies>;
 
-using FlowRefiningPolicies = meta::Typelist<StoppingPolicyClasses, FlowExecutionPolicyClasses>;
+using FlowRefiningPolicies = meta::Typelist<StoppingPolicyClasses, FlowExecutionPolicyClasses, FlowAcceptancePolicyClasses>;
 
 
 using MLCoarseningDispatcher = meta::StaticMultiDispatchFactory<MLCoarsener,

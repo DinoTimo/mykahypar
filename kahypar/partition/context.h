@@ -199,6 +199,7 @@ struct LocalSearchParameters {
   };
 
   struct Flow {
+    AcceptanceRule acceptance_policy = AcceptanceRule::UNDEFINED;
     FlowExecutionMode execution_policy = FlowExecutionMode::UNDEFINED;
     size_t beta = std::numeric_limits<size_t>::max();
   };
@@ -253,6 +254,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     }
     if (params.algorithm == RefinementAlgorithm::balance_approaching_kway_fm_km1 ||
         params.algorithm == RefinementAlgorithm::imbalance_holding_kway_fm_km1) {
+      str << "    acceptance policy:                " << params.flow.acceptance_policy << std::endl;
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;

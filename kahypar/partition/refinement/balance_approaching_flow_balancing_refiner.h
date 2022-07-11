@@ -47,28 +47,30 @@
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
 #include "kahypar/partition/refinement/policies/fm_improvement_policy.h"
+#include "kahypar/partition/refinement/policies/fm_acceptance_policy.h"
 #include "kahypar/utils/float_compare.h"
 #include "kahypar/utils/randomize.h"
 
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
           class FlowExecutionPolicy = Mandatory,
+          class AcceptancePolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
 class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
-          private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, FMImprovementPolicy>>{
+          private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
   static constexpr HypernodeID hn_to_debug = 5589;
 
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, 
+  using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
-  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
+  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
-  friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy,
+  friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -96,7 +98,8 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     _new_adjacent_part(_hg.initialNumNodes(), Hypergraph::kInvalidPartition),
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
-    _stopping_policy() { }
+    _stopping_policy(),
+    _acceptance_policy() { }
 
   ~BalanceApproachingKwayKMinusOneRefiner() override = default;
 
@@ -1085,6 +1088,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   ds::FastResetFlagArray<> _unremovable_he_parts;
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
+  AcceptancePolicy _acceptance_policy;
 
 };
 }  // namespace kahypar

@@ -200,6 +200,13 @@ enum class FlowExecutionMode : uint8_t {
   UNDEFINED
 };
 
+enum class AcceptanceRule : uint8_t {
+  balance_approaching,
+  imbalance_holding,
+  staircase,
+  UNDEFINED
+};
+
 enum class FlowHypergraphSizeConstraint : uint8_t {
   part_weight_fraction,
   max_part_weight_fraction,
@@ -473,6 +480,18 @@ static std::ostream& operator<< (std::ostream& os, const FlowExecutionMode& mode
   }
   return os << static_cast<uint8_t>(mode);
 }
+
+static std::ostream& operator<< (std::ostream& os, const AcceptanceRule& rule) {
+  switch (rule) {
+    case AcceptanceRule::balance_approaching: return os << "balance_approaching";
+    case AcceptanceRule::imbalance_holding: return os << "imbalance_holding";
+    case AcceptanceRule::staircase: return os << "staircase";
+    case AcceptanceRule::UNDEFINED: return os << "UNDEFINED";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(rule);
+}
+
 
 std::ostream& operator<< (std::ostream& os, const BinPackingAlgorithm& bp_algo) {
   switch (bp_algo) {
@@ -756,6 +775,19 @@ static FlowExecutionMode flowExecutionPolicyFromString(const std::string& mode) 
   LOG << "No valid flow execution mode.";
   exit(0);
   return FlowExecutionMode::exponential;
+}
+
+static AcceptanceRule flowAcceptancePolicyFromString(const std::string& mode) {
+  if (mode == "balance_approaching") {
+    return AcceptanceRule::balance_approaching;
+  } else if (mode == "imbalance_holding") {
+    return AcceptanceRule::imbalance_holding;
+  } else if (mode == "staircase") {
+    return AcceptanceRule::staircase;
+  }
+  LOG << "No valid acceptance policy.";
+  exit(0);
+  return AcceptanceRule::UNDEFINED;
 }
 
 static BinPackingAlgorithm binPackingAlgorithmFromString(const std::string& type) {

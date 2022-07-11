@@ -31,6 +31,7 @@
 #include "kahypar/partition/coarsening/policies/rating_tie_breaking_policy.h"
 #include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
 #include "kahypar/partition/refinement/policies/fm_stop_policy.h"
+#include "kahypar/partition/refinement/policies/fm_acceptance_policy.h"
 
 #define REGISTER_POLICY(policy, id, policy_class)                                  \
   static meta::Registrar<meta::PolicyRegistry<policy> > register_ ## policy_class( \
@@ -97,4 +98,11 @@ REGISTER_POLICY(FlowExecutionMode, FlowExecutionMode::multilevel,
                 MultilevelFlowExecution);
 REGISTER_POLICY(FlowExecutionMode, FlowExecutionMode::exponential,
                 ExponentialFlowExecution);
+
+REGISTER_POLICY(AcceptanceRule, AcceptanceRule::balance_approaching,
+                BalanceApproachingAcceptancePolicy);
+REGISTER_POLICY(AcceptanceRule, AcceptanceRule::imbalance_holding,
+                ImbalanceHoldingAcceptancePolicy);
+REGISTER_POLICY(AcceptanceRule, AcceptanceRule::staircase,
+                StaircaseAcceptancePolicy);
 }  // namespace kahypar
