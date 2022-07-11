@@ -73,13 +73,14 @@ class PartitionerFacade {
 
     if (context.logging.show_diagram) {
       io::callPythonPlottingScript();
-      if (context.local_search.algorithm != RefinementAlgorithm::balance_approaching_kway_fm_km1 && context.local_search.algorithm != RefinementAlgorithm::imbalance_holding_kway_fm_km1) {
-        std::string path = context.partition.graph_filename;
-        std::string graph_name = path.substr(path.find_last_of("/") + 1);
-        std::string final_kahypar_km1 = std::to_string(metrics::km1(hypergraph));
-        addToFile(graph_name + " " + std::to_string(context.partition.k) + " " + std::to_string(context.partition.epsilon) + " " +  final_kahypar_km1 + "\n", "../partitioning_results/data/other_results.txt");
     }
-  }
+    if (context.local_search.algorithm != RefinementAlgorithm::balance_approaching_kway_fm_km1 && context.local_search.algorithm != RefinementAlgorithm::imbalance_holding_kway_fm_km1
+    && context.logging.file_log_level != FileLogLevel::no_file_logging) {
+      std::string path = context.partition.graph_filename;
+      std::string graph_name = path.substr(path.find_last_of("/") + 1);
+      std::string final_kahypar_km1 = std::to_string(metrics::km1(hypergraph));
+      addToFile(graph_name + " " + std::to_string(context.partition.k) + " " + std::to_string(context.partition.epsilon) + " " +  final_kahypar_km1 + "\n", "../partitioning_results/data/other_results.txt");
+    }
   }
 
  private:

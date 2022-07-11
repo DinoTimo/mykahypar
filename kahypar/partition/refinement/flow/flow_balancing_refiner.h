@@ -51,7 +51,9 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _block_weight_diff_vector(context.partition.k, 0),
       _matrix_solver(),
       _flow_vector(),
-      _flow_execution_policy() { }
+      _flow_execution_policy() { 
+        ASSERT(context.local_search.fm.flow_model != BalancingFlowModel::UNDEFINED);
+      }
 
     HypernodeWeight idealBlockWeight() {
       return _hg.totalWeight() / _context.partition.k;
@@ -66,19 +68,24 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     }
 
     void init() {
-      if (false) {
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
         calculateLaplaceMatrix();
         solveBalancingEquations();
-      } else {
+      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
         calculateCapacityMatrix();
+      } else {
+        LOG << "Illegal Flow model: " << _context.local_search.fm.flow_model;
       }
     }
 
     bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
-      if (false) {
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
         return _hg.nodeWeight(node) <= 2 * (_flow_vector[from] - _flow_vector[to]);
-      } else {
+      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
         return tryToFindFlow(from, to, _hg.nodeWeight(node));
+      } else {
+        LOG << "Illegal Flow model: " << _context.local_search.fm.flow_model;
+        return false;
       }
     }
 
@@ -95,10 +102,10 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     }
 
     void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
-      if (false) {
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
       _flow_vector[from_part] -= _hg.nodeWeight(hn);
       _flow_vector[to_part] += _hg.nodeWeight(hn);
-      } else {
+      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
       _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
       _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
       }
@@ -246,8 +253,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         matrices::full_square_matrix<double>(std::vector<double>(_laplace_matrix.begin(), _laplace_matrix.end())),
         std::vector<double>(_block_weight_diff_vector.begin(), _block_weight_diff_vector.end()),
         _context.partition.k);
-      std::cout << "flow vector" << std::endl;
-      std::cout << joinVector(_flow_vector, "[" , ",", "]") << std::endl;
     }
 
   protected:

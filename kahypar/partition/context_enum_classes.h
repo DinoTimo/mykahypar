@@ -153,8 +153,8 @@ enum class RefinementStoppingRule : uint8_t {
 };
 
 enum class BalancingFlowModel : uint8_t {
-  finite_edges,
-  infinity_edges,
+  laplace_matrix,
+  quotient_flow,
   UNDEFINED
 };
 
@@ -455,8 +455,8 @@ static std::ostream& operator<< (std::ostream& os, const RefinementStoppingRule&
 
 static std::ostream& operator<< (std::ostream& os, const BalancingFlowModel& model) {
   switch (model) {
-    case BalancingFlowModel::infinity_edges : return os << "infinity_edges";
-    case BalancingFlowModel::finite_edges : return os << "finite_edges";
+    case BalancingFlowModel::quotient_flow : return os << "quotient_flow";
+    case BalancingFlowModel::laplace_matrix : return os << "laplace_matrix";
     case BalancingFlowModel::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
   }
@@ -604,10 +604,10 @@ static RefinementStoppingRule stoppingRuleFromString(const std::string& rule) {
 }
 
 static BalancingFlowModel balancingFlowModelFromString(const std::string& model) {
-  if (model == "finite_edges") {
-    return BalancingFlowModel::finite_edges;
-  } else if (model == "infinity_edges") {
-    return BalancingFlowModel::infinity_edges;
+  if (model == "laplace_matrix") {
+    return BalancingFlowModel::laplace_matrix;
+  } else if (model == "quotient_flow") {
+    return BalancingFlowModel::quotient_flow;
   }
   LOG << "No valid flow model for flow balancing.";
   exit(0);
