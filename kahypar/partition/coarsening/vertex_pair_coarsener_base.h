@@ -219,8 +219,8 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       s << model;
       infos.push_back("flow_model = " + s.str());
       std::stringstream s2;
-      s2 << _context.local_search.algorithm;
-      infos.push_back("search algorithm = " + s2.str());
+      s2 << _context.local_search.flow.acceptance_policy;
+      infos.push_back("upper bound = " + s2.str());
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
       infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));

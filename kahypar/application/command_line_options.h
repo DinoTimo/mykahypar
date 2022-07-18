@@ -136,6 +136,10 @@ po::options_description createFlowRefinementOptionsDescription(Context& context,
     po::value<size_t>((initial_partitioning ? &context.initial_partitioning.local_search.flow.beta : &context.local_search.flow.beta))->value_name("<size_t>"),
     "Beta of CONSTANT flow execution policy \n"
     "(default: 128)")
+    ((initial_partitioning ? "i-r-flow-rounding-zeta" : "r-flow-rounding-zeta"),
+    po::value<size_t>((initial_partitioning ? &context.initial_partitioning.local_search.flow.rounding_zeta : &context.local_search.flow.rounding_zeta))->value_name("<size_t>"),
+    "rounding zeta of staircase upper bound acceptance policy \n"
+    "(default: 1)")
     ((initial_partitioning ? "i-r-flow-acceptance-policy" : "r-flow-acceptance-policy"),
     po::value<std::string>()->value_name("<string>")->notifier(
       [&context, initial_partitioning](const std::string& ftype) {

@@ -202,6 +202,7 @@ struct LocalSearchParameters {
     AcceptanceRule acceptance_policy = AcceptanceRule::UNDEFINED;
     FlowExecutionMode execution_policy = FlowExecutionMode::UNDEFINED;
     size_t beta = std::numeric_limits<size_t>::max();
+    size_t rounding_zeta = 1;
   };
 
   struct HyperFlowCutter {
@@ -252,6 +253,9 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     }
     if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
       str << "    acceptance policy:                " << params.flow.acceptance_policy << std::endl;
+      if (params.flow.execution_policy == FlowExecutionMode::constant) {
+        str << "    rounding zeta:                    " << params.flow.rounding_zeta << std::endl;
+      }
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;

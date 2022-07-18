@@ -49,7 +49,7 @@ class FlowAcceptancePolicy : public meta::PolicyBase {
     HypernodeID _ideal_block_weight;
   
   public:
-    void init(HypernodeWeight step0_smallest_block_weight, HypernodeWeight step0_heaviest_block_weight, uint32_t total_num_steps, const Hypergraph& hg, const Context& context) {
+    virtual void init(HypernodeWeight step0_smallest_block_weight, HypernodeWeight step0_heaviest_block_weight, uint32_t total_num_steps, const Hypergraph& hg, const Context& context) {
       _step0_heaviest_block_weight = step0_heaviest_block_weight;
       _step0_smallest_block_weight = step0_smallest_block_weight;
       _total_num_steps = total_num_steps;
@@ -134,16 +134,36 @@ class ImbalanceHoldingAcceptancePolicy : public FlowAcceptancePolicy {
 
 class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
   using Base = FlowAcceptancePolicy;
+  private:
+    BalanceApproachingAcceptancePolicy _balance_approaching_policy;
+    HypernodeWeight _final_upper_bound;
 
   public:
-    StaircaseAcceptancePolicy() : Base() { }
+    StaircaseAcceptancePolicy() : Base(),
+    _balance_approaching_policy(),
+    _final_upper_bound(0) { }
+
+    void init(HypernodeWeight step0_smallest_block_weight, HypernodeWeight step0_heaviest_block_weight, uint32_t total_num_steps, const Hypergraph& hg, const Context& context) override {
+      _step0_heaviest_block_weight = step0_heaviest_block_weight;
+      _step0_smallest_block_weight = step0_smallest_block_weight;
+      _total_num_steps = total_num_steps;
+      _ideal_block_weight = hg.totalWeight() / context.partition.k;
+      _final_upper_bound = _ideal_block_weight * (context.partition.epsilon + 1);
+      _balance_approaching_policy.init(step0_smallest_block_weight, step0_heaviest_block_weight, total_num_steps, hg, context);
+    }
 
     HypernodeWeight currentUpperBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      return _ideal_block_weight;
-    }    
+      return std::max(round(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), context.local_search.flow.rounding_zeta), _final_upper_bound);
+    }
     
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      return _ideal_block_weight;
+      return 2 * _ideal_block_weight - currentUpperBlockWeightBound(hypergraph, context);
+    }
+  
+  private:
+    template <typename NumberType, typename RoundingType>
+    static NumberType round(NumberType raw, RoundingType rounding_beta) {
+      return static_cast<NumberType>(static_cast<int>(raw) / static_cast<int>(rounding_beta)) * rounding_beta;
     }
 };
 
