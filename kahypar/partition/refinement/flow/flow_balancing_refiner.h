@@ -96,7 +96,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         const HypernodeID hn = _performed_moves[last_index].hn;
         const PartitionID from_part = _performed_moves[last_index].to_part;
         const PartitionID to_part = _performed_moves[last_index].from_part;
-        updateFlow(hn, from_part, to_part);
+        updateFlow(hn, from_part, to_part, true);
         --last_index;
       }
     }
@@ -108,6 +108,25 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
       _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
       _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+      _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(hn); 
+      _flow_matrix[to_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
+      }
+    }
+
+    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part, bool undo) {
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
+      _flow_vector[from_part] -= _hg.nodeWeight(hn);
+      _flow_vector[to_part] += _hg.nodeWeight(hn);
+      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
+      _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
+      _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+        if (undo) {
+        _flow_matrix[to_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
+        _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(hn); 
+        } else {
+        _flow_matrix[to_part * _num_flow_nodes + to_part] += _hg.nodeWeight(hn);
+        _flow_matrix[from_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+        }
       }
     }
 
@@ -116,22 +135,19 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       if (_capacity_matrix[from * _num_flow_nodes + to] < weight) {
         return false;
       }
-      PartitionID source = _context.partition.k;
-      PartitionID sink = source + 1;
       std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, from, to, false));
-      ASSERT(tryout_flow[from * _num_flow_nodes + from] - _flow_matrix[from * _num_flow_nodes + from] 
-          == tryout_flow[to * _num_flow_nodes + to]     - _flow_matrix[to * _num_flow_nodes + to]);
-      if (2 * (tryout_flow[from * _num_flow_nodes + from] - _flow_matrix[from * _num_flow_nodes + from]) >= weight) {
-        _flow_matrix = tryout_flow;
-        _flow_matrix[source * _num_flow_nodes + from] += weight;
-        _flow_matrix[to * _num_flow_nodes + sink] += weight;
+      ASSERT([&]() {
+        HypernodeWeight inFlowAtSink = 0;
+        for (int block = 0; block < _num_flow_nodes - 2; block++) {
+          if (block == to) continue;
+          inFlowAtSink += tryout_flow[block * _num_flow_nodes + to];
+        }
+        return inFlowAtSink == tryout_flow[from * _num_flow_nodes + from];
+      }());
+      if ((2 * tryout_flow[from * _num_flow_nodes + from] >= weight)) {
         return true;
       } 
       return false;
-    }
-
-    std::vector<HypernodeWeight> solveFlow(HypernodeID source, HypernodeID sink) {
-      return _flow_solver.solveFlow(_capacity_matrix, source, sink, false);
     }
 
     void initQuotientEdgeCapacities() {
@@ -177,25 +193,14 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
       
       }
-
-      //Add pity weight for capacities of size 0 to allow moves on disconnected graphs
-      for (int i = 0; i < source; i++) {
-        for (int j = i + 1; j < source; j++) {
-          size_t index = i * _num_flow_nodes + j;
-          HypernodeWeight pityWeight = _hg.totalWeight() / source;
-          _capacity_matrix[index] = _capacity_matrix[index] > 0 ? _capacity_matrix[index] : pityWeight;
-          index = j * _num_flow_nodes + i;
-          _capacity_matrix[index] = _capacity_matrix[index] > 0 ? _capacity_matrix[index] : pityWeight; 
-        }
-      }
-      
       // Add edges between source and overloaded blocks and sink and underloaded blocks
       for (PartitionID blockNode = 0; blockNode < _context.partition.k; blockNode++) {
         if (isOverloadedBlock(blockNode)) {
           _capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight(); 
-        }
-        if (isUnderloadedBlock(blockNode)) {
+          _flow_matrix[blockNode * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight();
+        } else if (isUnderloadedBlock(blockNode)) {
           _capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
+          _flow_matrix[blockNode * _num_flow_nodes + blockNode] = idealBlockWeight() - _hg.partWeight(blockNode);
         }
       }
     }

@@ -173,6 +173,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
            V(best_metrics.imbalance) << V(metrics::imbalance(_hg, _context)));
     Base::reset();
     _unremovable_he_parts.reset();
+    //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
     if (_hg.currentNumNodes() - _context.partition.k == 0) {
       return false;
     }
@@ -295,21 +296,21 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
         HEAVY_REFINEMENT_ASSERT(current_imbalance == metrics::imbalance(_hg, _context),
                V(current_imbalance) << V(metrics::imbalance(_hg, _context)));
 
-        updateNeighbours(max_gain_node, from_part, to_part); //maybe coonsider gains in pq und in cache
+        updateNeighbours(max_gain_node, from_part, to_part);
         /** - indicates best value, C is Cost, km1 in this case. W is weight of the largest subdomain, not imbalance! i indicates the current partition, T is target weight
          *    C^i < C-
          * or C^i = C- && W^i < W-
          * or T <= W^i && W^i < W-
          */
+        const HypernodeWeight finalUpperBound = static_cast<HypernodeWeight>(static_cast<double>(FlowBase::idealBlockWeight()) * (1 + _context.partition.epsilon));
+        // Differentiate in between 3 modes
+        const bool balancing = current_heaviest_block_weight > currentUpperBound;
+        const bool unbalanced_optimizing = current_heaviest_block_weight <= currentUpperBound && current_heaviest_block_weight > finalUpperBound; 
+        const bool balanced_optimizing = current_heaviest_block_weight <= finalUpperBound;
+
         const bool better_balance = (current_heaviest_block_weight < best_metrics.heaviest_block_weight)
-                                   || ((current_heaviest_block_weight <= best_metrics.heaviest_block_weight) && (current_standard_deviation < best_metrics.standard_deviation));
-//                                 || ((current_heaviest_block_weight <= best_metrics.heaviest_block_weight) && (current_smallest_block_weight > best_metrics.smallest_block_weight));
-        //const bool better_balance = (current_standard_deviation < best_metrics.standard_deviation);
-        const bool balanced_goal_optimizing_phase = currentUpperBound <= static_cast<double>(FlowBase::idealBlockWeight()) * (1 + _context.partition.epsilon);
-        const bool balancing_phase = !balanced_goal_optimizing_phase;
-        // acceptance policy from jostle, but now adapted
+                                 || ((current_heaviest_block_weight <= best_metrics.heaviest_block_weight) && (current_standard_deviation < best_metrics.standard_deviation));
         const bool improved_km1 = (current_km1 < best_metrics.km1);
-        const bool same_or_better_km1_better_balance = (current_km1 <= best_metrics.km1) && better_balance;
         const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_heaviest_block_weight)
               && better_balance 
               && ((static_cast<double>(current_km1) / static_cast<double>(best_metrics.km1)) <= _context.local_search.fm.km1_increase_tolerance);
@@ -318,8 +319,9 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
                                                  improved_km1;
         const bool improved_balance_less_equal_km1 = better_balance &&
                                                      (current_km1 <= best_metrics.km1);
-        if ( ((balancing_phase)                && (improved_km1_within_balance || same_or_better_km1_better_balance || better_balance_when_unbalanced_with_km1_tolerance))
-          || ((balanced_goal_optimizing_phase) && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
+        if ( ((balancing)             && (improved_km1_within_balance || improved_balance_less_equal_km1 || better_balance_when_unbalanced_with_km1_tolerance))
+          || ((unbalanced_optimizing) && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_km1))
+          || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
           DBGC(current_km1 < best_metrics.km1) << "KWayFM improved cut from "

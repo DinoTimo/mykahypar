@@ -2,12 +2,11 @@
 
 #pragma once
 
-#include <iostream>
 #include <vector>
-#include <math.h>
-#include <memory>
 #include <limits>
-#include "gtest/gtest_prod.h"
+
+#include "kahypar/definitions.h"
+#include "kahypar/meta/mandatory.h"
 
 template <typename Capacity = int, typename Node = int>
 class FlowSolver {
@@ -26,8 +25,6 @@ class FlowSolver {
   };
 
   private:
-    FRIEND_TEST(AFlowSolver, SimpleFlowSolverTest);  //TODO this does not seem to work right now
-    FRIEND_TEST(AFlowSolver, MoreComplexFlowSolverTest);
     static constexpr bool debug = false;
     constexpr static Node _invalid_node = -1;
     const Edge _invalid_edge = Edge { _invalid_node, _invalid_node};
@@ -93,22 +90,16 @@ class FlowSolver {
       return flow(e.start, e.end);
     }
 
-    void init(const std::vector<Capacity> input, const Node source, const Node sink) {
-      _input_capacity_adjacency_matrix = move(input);
+    void initAndSanityCheck(const std::vector<Capacity> input, const Node source, const Node sink) {
+      _input_capacity_adjacency_matrix = input;
       _output_flow_adjacency_matrix = std::vector<Capacity>(input.size(), 0);
       _num_nodes = (int) sqrt(input.size());
       _pred = std::vector<Edge>(_num_nodes * (_num_nodes - 1), _invalid_edge);
-      if(_num_nodes * _num_nodes  != input.size()) {
-        LOG << "invalid input size of " << std::to_string(input.size()) <<". This is now undefined behaviour";
-      }
-      if(source < 0) {
-        LOG << "invalid source: " << std::to_string(source) <<". This is now undefined behaviour";
-      }
-      if(sink >= _num_nodes) {
-        LOG << "invalid sink: " << std::to_string(sink) <<". This is now undefined behaviour";
-      }
+      ASSERT(_num_nodes * _num_nodes == input.size());
+      ASSERT(source >= 0);
+      ASSERT(sink < _num_nodes);
+      _queue.clear();
       _queue = std::vector<Node>();
-      //maybe reserve some space for the _queue? log n?
       _source = source;
       _sink = sink;
     } 
@@ -128,8 +119,8 @@ class FlowSolver {
     FlowSolver& operator= (const FlowSolver&) = delete;
     FlowSolver& operator= (FlowSolver&&) = delete;
 
-    std::vector<Capacity> solveFlow(const std::vector<Capacity> input, const Node source, const Node sink, const bool respect_node_capacities) {
-      init(input, source, sink);
+    std::vector<Flow> solveFlow(const std::vector<Capacity>& input, const Node source, const Node sink, const bool respect_node_capacities) {
+      initAndSanityCheck(input, source, sink);
       do {
         _queue.insert(_queue.begin(), _source);
         fill(_pred.begin(), _pred.end(), _invalid_edge);
@@ -164,7 +155,6 @@ class FlowSolver {
             setFlow(reverseEdge(e), flow(reverseEdge(e)) - cur_flow);
             setFlow(e.start, flow(e.start) + cur_flow);
           }
-          DBG << "flow updated\n";
         }
       } while (_pred[_sink] != _invalid_edge);
       DBG << "input flow at target is = " << std::to_string(flow(sink)) << " and at source is = " << std::to_string(flow(source));
