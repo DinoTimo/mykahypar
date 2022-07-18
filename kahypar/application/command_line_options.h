@@ -354,7 +354,6 @@ po::options_description createRefinementOptionsDescription(Context& context,
     " - kway_fm_hyperflow_cutter        : k-way FM + HyperFlowCutter              (direct k-way        : cut)\n"
     " - kway_fm_km1                     : k-way FM algorithm                      (direct k-way        : km1)\n"
     " - balance_approaching_kway_fm_km1 : balance_approaching k-way FM algorithm  (direct k-way        : km1)\n"
-    " - imbalance_holding_kway_fm_km1   : imbalance_holding k-way FM algorithm    (direct k-way        : km1)\n"
     " - kway_fm_hyperflow_cutter_km1    : k-way FM + HyperFlowCutter              (direct k-way        : km1)\n"
     " - kway_hyperflow_cutter           : k-way HyperFlowCutter                   (direct k-way        : cut & km1)\n"
     )

@@ -33,7 +33,6 @@
 #include "kahypar/definitions.h"
 #include "kahypar/meta/int_to_type.h"
 #include "kahypar/partition/coarsening/coarsener_base.h"
-#include "kahypar/partition/refinement/imbalance_holding_flow_balancing_refiner.h"
 #include "kahypar/partition/coarsening/vertex_pair_rater.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"

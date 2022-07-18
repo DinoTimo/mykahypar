@@ -37,7 +37,6 @@
 #include "kahypar/partition/refinement/kway_fm_km1_refiner.h"
 #include "kahypar/partition/refinement/policies/fm_stop_policy.h"
 #include "kahypar/partition/refinement/balance_approaching_flow_balancing_refiner.h"
-#include "kahypar/partition/refinement/imbalance_holding_flow_balancing_refiner.h"
 
 #define REGISTER_DISPATCHED_REFINER(id, dispatcher, ...)          \
   static meta::Registrar<RefinerFactory> register_ ## dispatcher( \
@@ -70,14 +69,6 @@ REGISTER_DISPATCHED_REFINER(RefinementAlgorithm::kway_fm,
                               context.local_search.fm.stopping_rule));
 REGISTER_DISPATCHED_REFINER(RefinementAlgorithm::balance_approaching_kway_fm_km1,
                             BalanceApproachingKWayKMinusOneFactoryDispatcher,
-                            meta::PolicyRegistry<RefinementStoppingRule>::getInstance().getPolicy(
-                              context.local_search.fm.stopping_rule),
-                            meta::PolicyRegistry<FlowExecutionMode>::getInstance().getPolicy(
-                              context.local_search.flow.execution_policy),
-                            meta::PolicyRegistry<AcceptanceRule>::getInstance().getPolicy(
-                              context.local_search.flow.acceptance_policy));
-REGISTER_DISPATCHED_REFINER(RefinementAlgorithm::imbalance_holding_kway_fm_km1,
-                            ImbalanceHoldingKWayKMinusOneFactoryDispatcher,
                             meta::PolicyRegistry<RefinementStoppingRule>::getInstance().getPolicy(
                               context.local_search.fm.stopping_rule),
                             meta::PolicyRegistry<FlowExecutionMode>::getInstance().getPolicy(
