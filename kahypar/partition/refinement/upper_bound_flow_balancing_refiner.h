@@ -56,21 +56,21 @@ template <class StoppingPolicy = Mandatory,
           class FlowExecutionPolicy = Mandatory,
           class AcceptancePolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
-class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
-          private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
+class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
+          private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
   static constexpr HypernodeID hn_to_debug = 5589;
 
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  using Base = FMRefinerBase<RollbackInfo, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
-  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
-  friend class FMRefinerBase<RollbackInfo, BalanceApproachingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  friend class FMRefinerBase<RollbackInfo, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -92,7 +92,7 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
   };
 
  public:
-  BalanceApproachingKwayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
+  UpperBoundKwayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
     FlowBase(hypergraph, context),
     _tmp_gains(_context.partition.k, 0),
     _new_adjacent_part(_hg.initialNumNodes(), Hypergraph::kInvalidPartition),
@@ -101,13 +101,13 @@ class BalanceApproachingKwayKMinusOneRefiner final : public IRefiner,
     _stopping_policy(),
     _acceptance_policy() { }
 
-  ~BalanceApproachingKwayKMinusOneRefiner() override = default;
+  ~UpperBoundKwayKMinusOneRefiner() override = default;
 
-  BalanceApproachingKwayKMinusOneRefiner(const BalanceApproachingKwayKMinusOneRefiner&) = delete;
-  BalanceApproachingKwayKMinusOneRefiner& operator= (const BalanceApproachingKwayKMinusOneRefiner&) = delete;
+  UpperBoundKwayKMinusOneRefiner(const UpperBoundKwayKMinusOneRefiner&) = delete;
+  UpperBoundKwayKMinusOneRefiner& operator= (const UpperBoundKwayKMinusOneRefiner&) = delete;
 
-  BalanceApproachingKwayKMinusOneRefiner(BalanceApproachingKwayKMinusOneRefiner&&) = delete;
-  BalanceApproachingKwayKMinusOneRefiner& operator= (BalanceApproachingKwayKMinusOneRefiner&&) = delete;
+  UpperBoundKwayKMinusOneRefiner(UpperBoundKwayKMinusOneRefiner&&) = delete;
+  UpperBoundKwayKMinusOneRefiner& operator= (UpperBoundKwayKMinusOneRefiner&&) = delete;
 
  private:
   void initializeImpl(const HyperedgeWeight max_gain) override final {
