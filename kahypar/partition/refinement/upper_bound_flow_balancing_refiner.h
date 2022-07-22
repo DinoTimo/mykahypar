@@ -171,18 +171,10 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
     _current_step = _hg.currentNumNodes() - k;
-    
-    double current_imbalance = best_metrics.imbalance;
 
-    const HypernodeWeight initial_heaviest_block_weight = best_metrics.heaviest_block_weight;
-    HypernodeWeight current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+    Metrics current_metrics(best_metrics);
+    Metrics initial_metrics(current_metrics);
 
-    double current_standard_deviation = metrics::standard_deviation(_hg);
-
-    HypernodeWeight current_smallest_block_weight = metrics::smallest_block_weight(_hg);
-
-    const HyperedgeWeight initial_km1 = best_metrics.km1;
-    HyperedgeWeight current_km1 = best_metrics.km1;
   
     int min_cut_index = -1;
     int touched_hns_since_last_improvement = 0;
@@ -202,14 +194,14 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     DBG << "Current lower block weight is: " << std::to_string(currentLowerBound); 
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
-                                                              current_km1)) {
+                                                              current_metrics.km1)) {
       Gain max_gain = kInvalidGain;
       HypernodeID max_gain_node = kInvalidHN;
       PartitionID to_part = Hypergraph::kInvalidPartition;
       _pq.deleteMax(max_gain_node, max_gain, to_part);
       const PartitionID from_part = _hg.partID(max_gain_node);
 
-      DBG << V(current_km1) << V(max_gain_node) << V(max_gain)
+      DBG << V(current_metrics.km1) << V(max_gain_node) << V(max_gain)
           << V(_hg.partID(max_gain_node)) << V(to_part);
 
       ASSERT(!_hg.marked(max_gain_node), V(max_gain_node));
@@ -246,9 +238,9 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */
-      const bool imbalanced_but_improves_balance = current_heaviest_block_weight > currentUpperBound &&
+      const bool imbalanced_but_improves_balance = current_metrics.heaviest_block_weight > currentUpperBound &&
                                       FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node);
-      const bool balanced_and_keeps_balance = current_heaviest_block_weight <= currentUpperBound &&
+      const bool balanced_and_keeps_balance = current_metrics.heaviest_block_weight <= currentUpperBound &&
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound;      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
@@ -260,18 +252,17 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[from_part],
                                 _context.partition.max_part_weights[to_part]);
 
-        current_imbalance = metrics::imbalance(_hg, _context);
-        current_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-        current_smallest_block_weight = metrics::smallest_block_weight(_hg);
-        current_standard_deviation = metrics::standard_deviation(_hg);
+        current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+        current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg);
+        current_metrics.standard_deviation = metrics::standard_deviation(_hg);
 
-        current_km1 -= max_gain;
+        current_metrics.km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
 
-        HEAVY_REFINEMENT_ASSERT(current_km1 == metrics::km1(_hg),
-               V(current_km1) << V(metrics::km1(_hg)));
-        HEAVY_REFINEMENT_ASSERT(current_imbalance == metrics::imbalance(_hg, _context),
-               V(current_imbalance) << V(metrics::imbalance(_hg, _context)));
+        HEAVY_REFINEMENT_ASSERT(current_metrics.km1 == metrics::km1(_hg),
+               V(current_metrics.km1) << V(metrics::km1(_hg)));
+        HEAVY_REFINEMENT_ASSERT(current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg, _context),
+               V(current_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg, _context)));
 
         updateNeighbours(max_gain_node, from_part, to_part);
         /** - indicates best value, C is Cost, km1 in this case. W is weight of the largest subdomain, not imbalance! i indicates the current partition, T is target weight
@@ -281,33 +272,29 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
          */
         const HypernodeWeight finalUpperBound = static_cast<HypernodeWeight>(static_cast<double>(FlowBase::idealBlockWeight()) * (1 + _context.partition.epsilon));
         // Differentiate in between 3 modes
-        const bool balancing = current_heaviest_block_weight > currentUpperBound;
-        const bool unbalanced_optimizing = current_heaviest_block_weight <= currentUpperBound && current_heaviest_block_weight > finalUpperBound; 
-        const bool balanced_optimizing = current_heaviest_block_weight <= finalUpperBound;
+        const bool balancing = current_metrics.heaviest_block_weight > currentUpperBound;
+        const bool unbalanced_optimizing = current_metrics.heaviest_block_weight <= currentUpperBound && current_metrics.heaviest_block_weight > finalUpperBound; 
+        const bool balanced_optimizing = current_metrics.heaviest_block_weight <= finalUpperBound;
 
-        const bool better_balance = (current_heaviest_block_weight < best_metrics.heaviest_block_weight)
-                                 || ((current_heaviest_block_weight <= best_metrics.heaviest_block_weight) && (current_standard_deviation < best_metrics.standard_deviation));
-        const bool improved_km1 = (current_km1 < best_metrics.km1);
-        const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_heaviest_block_weight)
+        const bool better_balance = (current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight)
+                                 || ((current_metrics.heaviest_block_weight <= best_metrics.heaviest_block_weight) && (current_metrics.standard_deviation < best_metrics.standard_deviation));
+        const bool improved_km1 = (current_metrics.km1 < best_metrics.km1);
+        const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_metrics.heaviest_block_weight)
               && better_balance 
-              && ((static_cast<double>(current_km1) / static_cast<double>(best_metrics.km1)) <= _context.local_search.fm.km1_increase_tolerance);
+              && ((static_cast<double>(current_metrics.km1) / static_cast<double>(best_metrics.km1)) <= _context.local_search.fm.km1_increase_tolerance);
         // kahypar
-        const bool improved_km1_within_balance = (current_heaviest_block_weight <= currentUpperBound) &&
+        const bool improved_km1_within_balance = (current_metrics.heaviest_block_weight <= currentUpperBound) &&
                                                  improved_km1;
         const bool improved_balance_less_equal_km1 = better_balance &&
-                                                     (current_km1 <= best_metrics.km1);
+                                                     (current_metrics.km1 <= best_metrics.km1);
         if ( ((balancing)             && (improved_km1_within_balance || improved_balance_less_equal_km1 || better_balance_when_unbalanced_with_km1_tolerance))
           || ((unbalanced_optimizing) && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_km1))
           || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
-          DBGC(current_km1 < best_metrics.km1) << "KWayFM improved cut from "
-                                               << best_metrics.km1 << "to" << current_km1;
-          best_metrics.km1 = current_km1;
-          best_metrics.imbalance = current_imbalance;
-          best_metrics.heaviest_block_weight = current_heaviest_block_weight;
-          best_metrics.smallest_block_weight = current_smallest_block_weight;
-          best_metrics.standard_deviation = current_standard_deviation;
+          DBGC(current_metrics.km1 < best_metrics.km1) << "KWayFM improved cut from "
+                                               << best_metrics.km1 << "to" << current_metrics.km1;
+          best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
           touched_hns_since_last_improvement = 0;
@@ -337,7 +324,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         << _performed_moves.size()
         << "local search movements ( min_cut_index=" << min_cut_index << "): stopped because of "
         << (_stopping_policy.searchShouldStop(touched_hns_since_last_improvement, _context, beta,
-                                          best_metrics.km1, current_km1)
+                                          best_metrics.km1, current_metrics.km1)
         == true ? "policy" : "empty queue");
     //TODO
     // if current km1 > some parameter, threshold --> roll back to 0
@@ -348,8 +335,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));
-    return FMImprovementPolicy::improvementFound(best_metrics.km1, initial_km1,
-                                                 best_metrics.heaviest_block_weight, initial_heaviest_block_weight,
+    return FMImprovementPolicy::improvementFound(best_metrics.km1, initial_metrics.km1,
+                                                 best_metrics.heaviest_block_weight, initial_metrics.heaviest_block_weight,
                                                  currentUpperBound);
   }
 
