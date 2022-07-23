@@ -11,6 +11,7 @@ upperpath = path + "upper_bounds.txt"
 targetupperpath = path + "target_upper_bounds.txt"
 infopath = path + "info.txt"
 resultspath = path + "other_results.txt"
+standarddivspath = path + "standard_divs.txt"
 
 def main():
   plt.figure()
@@ -40,6 +41,8 @@ def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfi
 def showImbalance():
   showActualAndTarget(lowerpath, 'smallest block weight', targetlowerpath, 'target smallest block', False)
   showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
+  standard_divs = readLines(standarddivspath)
+  plt.plot(floatify(standard_divs), color='y', label='standard deviation')
   plt.legend()
   infoLines = readLines(infopath)
   plt.title(', '.join(infoLines))
