@@ -40,7 +40,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _initial_imbalance_set(false),
       _total_num_steps(0),
       _current_step(0),
-      _num_flow_nodes(context.partition.k + 2),
+      _num_flow_nodes(context.partition.k),
       _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _quotient_edge_capacities(context.partition.k * context.partition.k, 0),
@@ -67,12 +67,12 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       return _hg.partWeight(block) < idealBlockWeight();
     }
 
-    void init() {
+    void init(HypernodeWeight currentUpperBound, HypernodeWeight currentWeight) {
       if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
         calculateLaplaceMatrix();
         solveBalancingEquations();
       } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
-        calculateCapacityMatrix();
+        calculateCapacityMatrix(currentUpperBound, currentWeight);
       } else {
         LOG << "Illegal Flow model: " << _context.local_search.fm.flow_model;
       }
@@ -168,15 +168,14 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       }
     }
     
-    void calculateCapacityMatrix() {
+    void calculateCapacityMatrix(HypernodeWeight currentUpperBound, HypernodeWeight currentWeight) {
       //Calculate the sum of weight of border notes of each block
       initQuotientEdgeCapacities();
     
-      PartitionID source = _context.partition.k;
-      PartitionID sink = source + 1;
       std::fill(_capacity_matrix.begin(), _capacity_matrix.end(), 0);
       QuotientGraphBlockScheduler scheduler(_hg, _context);
       scheduler.buildQuotientGraph();
+      double high_imbalance_modifier = std::max(static_cast<double>(currentWeight) / static_cast<double>(currentUpperBound), 1.0);
       for (const std::pair<PartitionID, PartitionID> edge : scheduler.quotientGraphEdges()) {
         PartitionID heavierBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.first : edge.second;
         PartitionID lighterBlockID = (_hg.partWeight(edge.first) > _hg.partWeight(edge.second)) ? edge.second : edge.first;
@@ -186,27 +185,12 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         HypernodeWeight overload = heavierBlockWeight - idealWeight;
         HypernodeWeight underload = idealWeight - lighterBlockWeight;
         if (overload < 0 || underload < 0) {
-          _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
+          _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = high_imbalance_modifier * std::min(heavierBlockWeight - lighterBlockWeight, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
           continue;
         }
         HypernodeWeight maxEdgeCapacity = std::min(overload, underload);
-        _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
-      
+        _capacity_matrix[heavierBlockID * _num_flow_nodes + lighterBlockID] = high_imbalance_modifier *  std::min(maxEdgeCapacity, calculateQuotientEdgeCapacity(heavierBlockID, lighterBlockID));
       }
-      // Add edges between source and overloaded blocks and sink and underloaded blocks
-      for (PartitionID blockNode = 0; blockNode < _context.partition.k; blockNode++) {
-        if (isOverloadedBlock(blockNode)) {
-          _capacity_matrix[source * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight(); 
-          _flow_matrix[blockNode * _num_flow_nodes + blockNode] = _hg.partWeight(blockNode) - idealBlockWeight();
-        } else if (isUnderloadedBlock(blockNode)) {
-          _capacity_matrix[blockNode * _num_flow_nodes + sink] = idealBlockWeight() - _hg.partWeight(blockNode);
-          _flow_matrix[blockNode * _num_flow_nodes + blockNode] = idealBlockWeight() - _hg.partWeight(blockNode);
-        }
-      }
-    }
-
-    HypernodeWeight calculateQuotientNodeCapacity(PartitionID quotientNode) {
-      return _hg.partWeight(quotientNode);
     }
 
     HypernodeWeight calculateQuotientEdgeCapacity(PartitionID first, PartitionID second) {

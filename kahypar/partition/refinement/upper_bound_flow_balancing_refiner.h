@@ -186,7 +186,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     const double beta = log(_hg.currentNumNodes());
 
     if (_flow_execution_policy.executeFlow(_hg) || _current_step <= 1) {
-      FlowBase::init();
+      FlowBase::init(currentUpperBound, current_metrics.heaviest_block_weight);
     }
 
     DBG << "Current ideal block weight is: " << std::to_string(FlowBase::idealBlockWeight()) << " at step: " << std::to_string(_current_step) << " of a total of " << std::to_string(_total_num_steps) << " steps."; 
@@ -253,7 +253,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-        current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg);
+        current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg); //currently unused TODO(fritsch)
         current_metrics.standard_deviation = metrics::standard_deviation(_hg);
 
         current_metrics.km1 -= max_gain;
@@ -261,8 +261,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
 
         HEAVY_REFINEMENT_ASSERT(current_metrics.km1 == metrics::km1(_hg),
                V(current_metrics.km1) << V(metrics::km1(_hg)));
-        HEAVY_REFINEMENT_ASSERT(current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg, _context),
-               V(current_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg, _context)));
+        HEAVY_REFINEMENT_ASSERT(current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg),
+               V(current_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg)));
 
         updateNeighbours(max_gain_node, from_part, to_part);
         /** - indicates best value, C is Cost, km1 in this case. W is weight of the largest subdomain, not imbalance! i indicates the current partition, T is target weight
