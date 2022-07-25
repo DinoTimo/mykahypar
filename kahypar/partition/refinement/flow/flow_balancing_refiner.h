@@ -138,11 +138,16 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, from, to, false));
       ASSERT([&]() {
         HypernodeWeight inFlowAtSink = 0;
-        for (int block = 0; block < _num_flow_nodes - 2; block++) {
-          if (block == to) continue;
-          inFlowAtSink += tryout_flow[block * _num_flow_nodes + to];
+        HypernodeWeight outFlowAtSource = 0;
+        for (int block = 0; block < _num_flow_nodes ; block++) {
+          if (block != to) {
+            inFlowAtSink += tryout_flow[block * _num_flow_nodes + to];
+          }
+          if (block != from) {
+            outFlowAtSource += tryout_flow[from * _num_flow_nodes + block];
+          }
         }
-        return inFlowAtSink == tryout_flow[from * _num_flow_nodes + from];
+        return inFlowAtSink == tryout_flow[from * _num_flow_nodes + from] && inFlowAtSink == outFlowAtSource;
       }());
       if ((2 * tryout_flow[from * _num_flow_nodes + from] >= weight)) {
         return true;
