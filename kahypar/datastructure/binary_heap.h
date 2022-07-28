@@ -393,6 +393,128 @@ class BinaryMinHeap final : public BinaryHeapBase<BinaryMinHeap<IDType_, KeyType
   }
 };
 
+template <typename IDType, typename KeyType>
+class BinaryMinMaxHeap final {
+  private:
+    BinaryMinHeap<IDType, KeyType> _min_heap;
+    BinaryMaxHeap<IDType, KeyType> _max_heap;
+
+  public:
+    explicit BinaryMinMaxHeap(const IDType& storage_initializer,
+                         const KeyType& unused = 0) : 
+      _min_heap(storage_initializer, unused),
+      _max_heap(storage_initializer, unused) { }                    
+
+
+  BinaryMinMaxHeap(const BinaryMinMaxHeap&) = delete;
+  BinaryMinMaxHeap& operator= (const BinaryMinMaxHeap&) = delete;
+
+  BinaryMinMaxHeap(BinaryMinMaxHeap&&) = default;
+  BinaryMinMaxHeap& operator= (BinaryMinMaxHeap&&) = default;
+
+  ~BinaryMinMaxHeap() = default;
+
+  size_t size() const {
+    ASSERT(_min_heap.size() == _max_heap.size());
+    return _min_heap.size();
+  }
+
+  bool empty() const {
+    ASSERT(_min_heap.empty() == _max_heap.empty());
+    return _min_heap.empty();
+  }
+
+  inline const KeyType & getKey(const IDType& id) const {
+    ASSERT(_min_heap.getKey(id) == _max_heap.getKey(id));
+    return _min_heap.getKey(id);
+  }
+
+  inline bool isReached(const IDType& id, const size_t& handle) const {
+    ASSERT(_min_heap.isReached(id, handle) == _max_heap.isReached(id, handle));
+    return _min_heap.isReached(id, handle);
+  }
+
+  inline bool contains(const IDType& id) const {
+    ASSERT(_min_heap.contains(id) == _max_heap.contains(id));
+    return _min_heap.contains(id);
+  }
+
+  inline void clear() {
+    _min_heap.clear();
+    _max_heap.clear();
+  }
+
+  KAHYPAR_ATTRIBUTE_ALWAYS_INLINE void push(const IDType& id, const KeyType& key) {
+    _min_heap.push(id, key);
+    _max_heap.push(id, key);
+  }
+
+  inline void decreaseKey(const IDType& id, const KeyType& new_key) {
+    _min_heap.decreaseKey(id, new_key);
+    _max_heap.decreaseKey(id, new_key);
+  }
+
+  inline void increaseKey(const IDType& id, const KeyType& new_key) {
+    _min_heap.increaseKey(id, new_key);
+    _max_heap.increaseKey(id, new_key);
+  }
+
+  inline void decreaseKeyBy(const IDType& id, const KeyType& key_delta) {
+    _min_heap.decreaseKeyBy(id, key_delta);
+    _max_heap.decreaseKeyBy(id, key_delta);
+  }
+
+  inline void increaseKeyBy(const IDType& id, const KeyType& key_delta) {
+    _min_heap.increaseKeyBy(id, key_delta);
+    _max_heap.increaseKeyBy(id, key_delta);
+  }
+
+  inline void remove(const IDType& id) {
+    _min_heap.remove(id);
+    _max_heap.remove(id);
+  }
+
+  inline void updateKey(const IDType& id, const KeyType& new_key) {
+    _min_heap.updateKey(id, new_key);
+    _max_heap.updateKey(id, new_key);
+  }
+
+  inline void updateKeyBy(const IDType& id, const KeyType& key_delta) {
+    _min_heap.updateKeyBy(id, key_delta);
+    _max_heap.updateKeyBy(id, key_delta);
+
+  }
+
+  inline void popMax() {
+    IDType id = _max_heap.top();
+    _max_heap.pop();
+    _min_heap.remove(id);
+  }
+
+  inline void popMin() {
+    IDType id = _min_heap.top();
+    _min_heap.pop();
+    _max_heap.remove(id);
+  }
+
+  inline const IDType & max() const {
+    return _max_heap.top();
+  }
+
+  inline const KeyType & maxKey() const {
+    return _max_heap.topKey();
+  }
+
+
+  inline const IDType & min() const {
+    return _min_heap.top();
+  }
+
+  inline const KeyType & minKey() const {
+    return _min_heap.topKey();
+  }
+
+};
 
 // Traits specialization for max heap:
 template <typename IDType_, typename KeyType_>
