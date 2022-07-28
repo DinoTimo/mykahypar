@@ -61,8 +61,8 @@ class CoarsenerBase {
     _coarsening_progress_bar(_hg.initialNumNodes(), 0,
       context.partition.verbose_output && context.type == ContextType::main),
     _rebalance_execution_policy(),
-    _rebalancer(hypergraph, context) {
-      _rebalance_execution_policy.initialize(hypergraph, context);
+    _rebalancer(hypergraph, context),
+    _initialized_policy(false) {
       _rebalancer.initialize();
       _history.reserve(_hg.initialNumNodes());
       _max_hn_weights.reserve(_hg.initialNumNodes());
@@ -131,6 +131,10 @@ class CoarsenerBase {
   void performLocalSearch(IRefiner& refiner, std::vector<HypernodeID>& refinement_nodes,
                           Metrics& current_metrics,
                           const UncontractionGainChanges& changes) {
+    if (!_initialized_policy) {
+      _rebalance_execution_policy.initialize(_hg, _context);
+      _initialized_policy = true;
+    }
     ASSERT(changes.representative.size() != 0, "0");
     ASSERT(changes.contraction_partner.size() != 0, "0");
     bool improvement_found = performLocalSearchIteration(refiner, refinement_nodes, changes,
@@ -149,6 +153,7 @@ class CoarsenerBase {
       LOG << "Starting rebalancing";
       _rebalancer.rebalance(_max_hn_weights.back().max_weight);
       LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";
+      refiner.initialize(0);
     }
   }
 
@@ -191,5 +196,6 @@ class CoarsenerBase {
   ProgressBar _coarsening_progress_bar;
   MultilevelFlowExecution _rebalance_execution_policy; //Abstract this somehow
   Rebalancer _rebalancer;
+  bool _initialized_policy;
 };
 }  // namespace kahypar
