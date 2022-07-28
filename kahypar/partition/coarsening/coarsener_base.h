@@ -35,6 +35,8 @@
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/refinement/i_refiner.h"
+#include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
+#include "kahypar/partition/refinement/rebalancer.h"
 #include "kahypar/utils/progress_bar.h"
 
 namespace kahypar {
@@ -57,11 +59,15 @@ class CoarsenerBase {
     _max_hn_weights(),
     _hypergraph_pruner(_hg.initialNumNodes()),
     _coarsening_progress_bar(_hg.initialNumNodes(), 0,
-      context.partition.verbose_output && context.type == ContextType::main) {
-    _history.reserve(_hg.initialNumNodes());
-    _max_hn_weights.reserve(_hg.initialNumNodes());
-    _max_hn_weights.emplace_back(CurrentMaxNodeWeight { _hg.initialNumNodes(),
-                                                        weight_of_heaviest_node });
+      context.partition.verbose_output && context.type == ContextType::main),
+    _rebalance_execution_policy(),
+    _rebalancer(hypergraph, context) {
+      _rebalance_execution_policy.initialize(hypergraph, context);
+      _rebalancer.initialize();
+      _history.reserve(_hg.initialNumNodes());
+      _max_hn_weights.reserve(_hg.initialNumNodes());
+      _max_hn_weights.emplace_back(CurrentMaxNodeWeight { _hg.initialNumNodes(),
+                                                          weight_of_heaviest_node });
   }
 
   virtual ~CoarsenerBase() = default;
@@ -139,6 +145,11 @@ class CoarsenerBase {
                                                       current_metrics);
       ++iteration;
     }
+    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
+      LOG << "Starting rebalancing";
+      _rebalancer.rebalance(_max_hn_weights.back().max_weight);
+      LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";
+    }
   }
 
   bool performLocalSearchIteration(IRefiner& refiner,
@@ -178,5 +189,7 @@ class CoarsenerBase {
   std::vector<CurrentMaxNodeWeight> _max_hn_weights;
   HypergraphPruner _hypergraph_pruner;
   ProgressBar _coarsening_progress_bar;
+  MultilevelFlowExecution _rebalance_execution_policy; //Abstract this somehow
+  Rebalancer _rebalancer;
 };
 }  // namespace kahypar
