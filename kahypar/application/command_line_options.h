@@ -411,6 +411,9 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-km1-increase-tolerance" : "r-fm-km1-increase-tolerance"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.km1_increase_tolerance : &context.local_search.fm.km1_increase_tolerance))->value_name("<double>"),
     "Parameter on how much the km1 goal might be worsenend to ensure balanced solutions")
+    ((initial_partitioning ? "i-r-use-rebalancer" : "r-use-rebalancer"),
+    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.use_rebalancer : &context.local_search.fm.use_rebalancer))->value_name("<bool>"),
+    "Use rebalancer during refinement at levels defined by multilevel flow execution policy.")
     ((initial_partitioning ? "i-r-fm-balance-convergence-time" : "r-fm-balance-convergence-time"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_time : &context.local_search.fm.balance_convergence_time))->value_name("<double>"),
     "Parameter for after how many steps the partition must fulfill the balance constraint");

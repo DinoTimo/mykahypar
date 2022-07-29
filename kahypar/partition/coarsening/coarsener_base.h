@@ -149,7 +149,7 @@ class CoarsenerBase {
                                                       current_metrics);
       ++iteration;
     }
-    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
+    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
       LOG << "Starting rebalancing";
       _rebalancer.rebalance(_max_hn_weights.back().max_weight);
       LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";

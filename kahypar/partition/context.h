@@ -193,6 +193,7 @@ struct LocalSearchParameters {
     double adaptive_stopping_alpha = std::numeric_limits<double>::max();
     double balance_convergence_speed = std::numeric_limits<double>::max();
     double balance_convergence_time = std::numeric_limits<double>::max();
+    bool use_rebalancer = false;
     double km1_increase_tolerance = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
@@ -225,6 +226,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   str << "Local Search Parameters:" << std::endl;
   str << "  Algorithm:                          " << params.algorithm << std::endl;
   str << "  iterations per level:               " << params.iterations_per_level << std::endl;
+  str << "  use rebalancer:                     " << params.fm.use_rebalancer << std::endl;
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
@@ -256,6 +258,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
       if (params.flow.execution_policy == FlowExecutionMode::constant) {
         str << "    rounding zeta:                    " << params.flow.rounding_zeta << std::endl;
       }
+      
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;
