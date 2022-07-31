@@ -12,6 +12,7 @@ targetupperpath = path + "target_upper_bounds.txt"
 infopath = path + "info.txt"
 resultspath = path + "other_results.txt"
 standarddivspath = path + "standard_divs.txt"
+rebalancestepspath = path + "rebalance_steps.txt"
 
 def main():
   plt.figure()
@@ -41,8 +42,13 @@ def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfi
 def showImbalance():
   showActualAndTarget(lowerpath, 'smallest block weight', targetlowerpath, 'target smallest block', False)
   showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
+  
   standard_divs = readLines(standarddivspath)
   plt.plot(floatify(standard_divs), color='y', label='standard deviation')
+
+  rebalancesteps = floatify(readLines(rebalancestepspath))
+  if (len(rebalancesteps) != 0):
+    plt.vlines(rebalancesteps, 0, floatify(readLines(targetupperpath))[0], 'g', 'dashed', 'rebalance steps')
   plt.legend()
   infoLines = readLines(infopath)
   plt.title(', '.join(infoLines))
@@ -50,11 +56,11 @@ def showImbalance():
 
 #Expecting the following format: just one value per line, no comma
 def showKm1():
-  lines = readLines(km1path)
-  num = len(lines)
+  km1lines = floatify(readLines(km1path))
+  num = len(km1lines)
   if num == 0: return
-  initkm1 = float(lines[0])
-  finalkm1 = float(lines[len(lines) - 1])
+  initkm1 = km1lines[0]
+  finalkm1 = km1lines[len(km1lines) - 1]
   plt.hlines(y=initkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='g', label='initial km1: ' + str(initkm1))
   plt.hlines(y=finalkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='r', label='final km1: ' + str(finalkm1))
 
@@ -65,9 +71,13 @@ def showKm1():
   kahyparkm1 = getKm1FromFile(graphFile, k, e)
   if kahyparkm1 != 0:
     plt.hlines(y=kahyparkm1, xmin=0, xmax=num - 1 , linewidth=1, color='y', label='kahypar km1: ' + str(kahyparkm1))
-    
+
+  rebalancesteps = floatify(readLines(rebalancestepspath))
+  if (len(rebalancesteps) != 0):
+    plt.vlines(rebalancesteps, 0, max(km1lines), 'g', 'dashed', 'rebalance steps')
+
   plt.title('km1 goal - minimize')
-  plt.plot(floatify(lines), color='b', label='km1')
+  plt.plot(km1lines, color='b', label='km1')
   plt.legend()
 
 def getLastWordFromLine(line):

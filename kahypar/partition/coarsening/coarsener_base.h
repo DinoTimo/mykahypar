@@ -62,7 +62,8 @@ class CoarsenerBase {
       context.partition.verbose_output && context.type == ContextType::main),
     _rebalance_execution_policy(),
     _rebalancer(hypergraph, context),
-    _initialized_policy(false) {
+    _initialized_policy(false),
+    _rebalance_steps() {
       _rebalancer.initialize();
       _history.reserve(_hg.initialNumNodes());
       _max_hn_weights.reserve(_hg.initialNumNodes());
@@ -70,7 +71,9 @@ class CoarsenerBase {
                                                           weight_of_heaviest_node });
   }
 
-  virtual ~CoarsenerBase() = default;
+  virtual ~CoarsenerBase() {
+    writeVectorToFile(_rebalance_steps, "../partitioning_results/data/rebalance_steps.txt");
+  }
 
   CoarsenerBase(const CoarsenerBase&) = delete;
   CoarsenerBase& operator= (const CoarsenerBase&) = delete;
@@ -152,6 +155,7 @@ class CoarsenerBase {
     if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
       LOG << "Starting rebalancing";
       _rebalancer.rebalance(_max_hn_weights.back().max_weight);
+      _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
       LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";
       refiner.initialize(0);
     }
@@ -197,5 +201,6 @@ class CoarsenerBase {
   MultilevelFlowExecution _rebalance_execution_policy; //Abstract this somehow
   Rebalancer _rebalancer;
   bool _initialized_policy;
+  std::vector<PartitionID> _rebalance_steps;
 };
 }  // namespace kahypar
