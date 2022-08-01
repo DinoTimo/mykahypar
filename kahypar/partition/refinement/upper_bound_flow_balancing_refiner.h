@@ -109,6 +109,34 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   UpperBoundKwayKMinusOneRefiner(UpperBoundKwayKMinusOneRefiner&&) = delete;
   UpperBoundKwayKMinusOneRefiner& operator= (UpperBoundKwayKMinusOneRefiner&&) = delete;
 
+ void moveNodeExternallyAndKeepInternalCacheCorrect(HypernodeID node, PartitionID from_part, PartitionID to_part) override {
+    bool nodeWasInactive = !_hg.active(node);
+    if (nodeWasInactive) {
+      _hg.activate(node);
+    }
+    if (!_hg.marked(node)) {
+      _hg.mark(node);
+    }
+    Base::moveHypernode(node, from_part, to_part);
+/*    if (_gain_cache.entryExists(node)) {
+      if (_gain_cache.adjacentParts(node).contains(to_part)) {
+        _gain_cache.adjacentParts(node).remove(to_part);
+      }
+      if (!_gain_cache.adjacentParts(node).contains(from_part)) {
+        //_gain_cache.adjacentParts(node).add(from_part);
+      }
+    }*/
+    FlowBase::updateFlow(node, from_part, to_part);
+    Base::updatePQpartState(from_part,
+                            to_part,
+                            _context.partition.max_part_weights[from_part],
+                            _context.partition.max_part_weights[to_part]);
+    /*if (nodeWasInactive) {
+      _hg.deactivate(node);
+    }*/
+    updateNeighbours(node, from_part, to_part);
+ }
+
  private:
   void initializeImpl(const HyperedgeWeight max_gain) override final {
     if (!_is_initialized) {
@@ -326,8 +354,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         << (_stopping_policy.searchShouldStop(touched_hns_since_last_improvement, _context, beta,
                                           best_metrics.km1, current_metrics.km1)
         == true ? "policy" : "empty queue");
-    //TODO
-    // if current km1 > some parameter, threshold --> roll back to 0
 
     Base::rollback(_performed_moves.size() - 1, min_cut_index);
     _gain_cache.rollbackDelta();
@@ -494,7 +520,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     for (const HypernodeID& pin : _hg.pins(he)) {
       // LOG << V(pin) << V(_hg.active(pin)) << V(_hg.isBorderNode(pin));
       if (!only_update_cache && !_hg.marked(pin)) {
-        ASSERT(pin != moved_hn, V(pin));
+        ASSERT(pin != moved_hn, V(pin) << V(moved_hn));
         if (!_hg.active(pin)) {
           if (_hg.edgeSize(he) <= _context.partition.hyperedge_size_threshold) {
             _hns_to_activate.push_back(pin);
@@ -663,7 +689,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   void updateNeighbours(const HypernodeID moved_hn, const PartitionID from_part,
                         const PartitionID to_part) {
     _new_adjacent_part.resetUsedEntries();
-
     bool moved_hn_remains_conntected_to_from_part = false;
     for (const HyperedgeID& he : _hg.incidentEdges(moved_hn)) {
       const HypernodeID pins_in_source_part_after = _hg.pinCountInPart(he, from_part);

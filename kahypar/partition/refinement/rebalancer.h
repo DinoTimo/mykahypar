@@ -12,10 +12,13 @@
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/datastructure/binary_heap.h"
+#include "kahypar/partition/refinement/i_refiner.h"
+#include "kahypar/partition/refinement/move.h"
 
 namespace kahypar {
 
 class Rebalancer {
+  static constexpr bool debug = true;
   const static PartitionID _invalid_part = std::numeric_limits<PartitionID>::max();
   const static Gain _invalid_gain = std::numeric_limits<Gain>::min();
   using Queue = ds::BinaryMinMaxHeap<HypernodeWeight, HypernodeWeight>;
@@ -57,7 +60,7 @@ class Rebalancer {
       }
     }
 
-    void rebalance(HypernodeWeight heaviest_node_weight) {
+    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner) {
       _current_upper_bound = std::max((1.0 + _context.partition.epsilon) * static_cast<double>(_hg.totalWeight()) / static_cast<double>(k),
                                                     heaviest_node_weight + static_cast<double>(_hg.totalWeight()) / static_cast<double>(k));
       reset();
@@ -79,13 +82,14 @@ class Rebalancer {
       // fill binary heaps
       // ------------------------------
       for (HypernodeID node : _hg.nodes()) {
+        ASSERT(_hg.nodeIsEnabled(node));
         const PartitionID from_part = _hg.partID(node);
         if (_hg.partWeight(from_part) <= _current_upper_bound) continue;
         const std::pair<PartitionID, Gain> relativeGainMove = highestGainMoveToNotOverloadedBlock(node);
         const PartitionID to_part = relativeGainMove.first;
         const Gain relativeGain = relativeGainMove.second;
         if (relativeGain == _invalid_gain || to_part == _invalid_part) {
-          LOG << "no move found for node " << node << " from part " << from_part;
+          DBG << "no move found for node " << node << " from part " << from_part;
           ASSERT(relativeGain == _invalid_gain && to_part == _invalid_part);
           continue;
         }
@@ -116,8 +120,9 @@ class Rebalancer {
             continue;
           }
           NodeMove move = nodeMoveFromInt(_queues[block].max());
-          ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)));
           _queues[block].popMax();
+          ASSERT(!_queues[block].contains(nodeMoveToInt(move)));
+          ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)));
           _queue_weights[block] -= _hg.nodeWeight(move.node);
           if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound
           || false) /* gain changed */ {
@@ -134,15 +139,15 @@ class Rebalancer {
             }
 
           } else {
-            LOG << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]"; 
-            _hg.changeNodePart(move.node, block, move.to_part);
+            DBG << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]";
+            ASSERT(_hg.nodeIsEnabled(move.node));
+            refiner.moveNodeExternallyAndKeepInternalCacheCorrect(move.node, block, move.to_part);
             // mark other gains as invalid
             ASSERT(!_queues[block].contains(nodeMoveToInt(NodeMove{move.node, block})));
             movedAnythingThisIteration = true;
           }
         }
       } while(movedAnythingThisIteration);
-
     }
 
 

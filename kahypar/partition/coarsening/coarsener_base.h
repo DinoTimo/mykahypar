@@ -154,7 +154,7 @@ class CoarsenerBase {
     }
     if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
       LOG << "Starting rebalancing";
-      _rebalancer.rebalance(_max_hn_weights.back().max_weight);
+      _rebalancer.rebalance(_max_hn_weights.back().max_weight, refiner);
       _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
       LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";
       refiner.initialize(0);
