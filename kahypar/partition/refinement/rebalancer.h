@@ -14,6 +14,7 @@
 #include "kahypar/datastructure/binary_heap.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/move.h"
+#include "kahypar/partition/metrics.h"
 
 namespace kahypar {
 
@@ -60,7 +61,7 @@ class Rebalancer {
       }
     }
 
-    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner) {
+    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics) {
       _current_upper_bound = std::max((1.0 + _context.partition.epsilon) * static_cast<double>(_hg.totalWeight()) / static_cast<double>(k),
                                                     heaviest_node_weight + static_cast<double>(_hg.totalWeight()) / static_cast<double>(k));
       reset();
@@ -148,6 +149,10 @@ class Rebalancer {
           }
         }
       } while(movedAnythingThisIteration);
+      current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+      current_metrics.standard_deviation = metrics::standard_deviation(_hg);
+      //TODO(fritsch) update and dont fully compute again
+      current_metrics.km1 = metrics::km1(_hg);
     }
 
 

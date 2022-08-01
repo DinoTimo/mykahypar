@@ -123,7 +123,6 @@ class CacheElement {
 
 
   void remove(const PartitionID part) {
-    ASSERT(contains(part));
     ASSERT(part < _k, V(part));
     const PartitionID index = sparse(part).index;
     ASSERT(index < _size && dense(index) == part, V(part));

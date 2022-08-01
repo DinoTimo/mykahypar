@@ -154,7 +154,7 @@ class CoarsenerBase {
     }
     if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
       LOG << "Starting rebalancing";
-      _rebalancer.rebalance(_max_hn_weights.back().max_weight, refiner);
+      _rebalancer.rebalance(_max_hn_weights.back().max_weight, refiner, current_metrics);
       _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
       LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";
       refiner.initialize(0);
@@ -167,6 +167,8 @@ class CoarsenerBase {
                                    Metrics& current_metrics) {
     const HyperedgeWeight old_cut = current_metrics.cut;
     const HyperedgeWeight old_km1 = current_metrics.km1;
+    const HypernodeWeight old_heaviest_block = current_metrics.heaviest_block_weight;
+    const double old_standard_deviation = current_metrics.standard_deviation; //TODO(fritsch) this is technically duplicated code from the fm improvement policy
     bool improvement_found = refiner.refine(refinement_nodes,
                                             { _context.partition.max_part_weights[0]
                                               + _max_hn_weights.back().max_weight,
@@ -175,7 +177,10 @@ class CoarsenerBase {
                                             current_changes,
                                             current_metrics);
 
-    HEAVY_REFINEMENT_ASSERT((current_metrics.cut <= old_cut && current_metrics.cut == metrics::hyperedgeCut(_hg)) ||
+    HEAVY_REFINEMENT_ASSERT(
+           (current_metrics.cut                   <= old_cut                && current_metrics.cut == metrics::hyperedgeCut(_hg)) ||
+           (current_metrics.heaviest_block_weight <= old_heaviest_block     && current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg)) ||
+           (current_metrics.standard_deviation    <= old_standard_deviation && current_metrics.standard_deviation == metrics::standard_deviation(_hg)) ||
            (current_metrics.km1 <= old_km1 && current_metrics.km1 == metrics::km1(_hg)),
            V(current_metrics.cut) << V(old_cut) << V(metrics::hyperedgeCut(_hg))
                                   << V(current_metrics.km1) << V(old_km1) << V(metrics::km1(_hg)));

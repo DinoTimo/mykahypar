@@ -110,7 +110,13 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   UpperBoundKwayKMinusOneRefiner& operator= (UpperBoundKwayKMinusOneRefiner&&) = delete;
 
  void moveNodeExternallyAndKeepInternalCacheCorrect(HypernodeID node, PartitionID from_part, PartitionID to_part) override {
-    bool nodeWasInactive = !_hg.active(node);
+  _hg.changeNodePart(node, from_part, to_part);
+  FlowBase::updateFlow(node, from_part, to_part);
+  Base::updatePQpartState(from_part,
+                          to_part,
+                          _context.partition.max_part_weights[from_part],
+                          _context.partition.max_part_weights[to_part]);
+    /*bool nodeWasInactive = !_hg.active(node);
     if (nodeWasInactive) {
       _hg.activate(node);
     }
@@ -118,23 +124,18 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _hg.mark(node);
     }
     Base::moveHypernode(node, from_part, to_part);
-/*    if (_gain_cache.entryExists(node)) {
+    if (nodeWasInactive) {
+      _hg.deactivate(node);
+    }
+    if (_gain_cache.entryExists(node)) {
       if (_gain_cache.adjacentParts(node).contains(to_part)) {
         _gain_cache.adjacentParts(node).remove(to_part);
       }
       if (!_gain_cache.adjacentParts(node).contains(from_part)) {
         //_gain_cache.adjacentParts(node).add(from_part);
       }
-    }*/
-    FlowBase::updateFlow(node, from_part, to_part);
-    Base::updatePQpartState(from_part,
-                            to_part,
-                            _context.partition.max_part_weights[from_part],
-                            _context.partition.max_part_weights[to_part]);
-    /*if (nodeWasInactive) {
-      _hg.deactivate(node);
-    }*/
-    updateNeighbours(node, from_part, to_part);
+    }
+    updateNeighbours(node, from_part, to_part);*/
  }
 
  private:
@@ -173,8 +174,9 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                   const UncontractionGainChanges&,
                   Metrics& best_metrics) override final {
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg), V(best_metrics.km1) << V(metrics::km1(_hg)));
-    HEAVY_REFINEMENT_ASSERT(FloatingPoint<double>(best_metrics.imbalance).AlmostEquals(FloatingPoint<double>(metrics::imbalance(_hg, _context))),
-           V(best_metrics.imbalance) << V(metrics::imbalance(_hg, _context)));
+    HEAVY_REFINEMENT_ASSERT(best_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg), V(best_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg)));
+    HEAVY_REFINEMENT_ASSERT(best_metrics.standard_deviation == metrics::standard_deviation(_hg), V(best_metrics.standard_deviation) << V(metrics::standard_deviation(_hg)));
+    
     //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
     uint32_t k = _context.partition.k;
     if (_hg.currentNumNodes() - k == 0) {
@@ -281,7 +283,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-        current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg); //currently unused TODO(fritsch)
         current_metrics.standard_deviation = metrics::standard_deviation(_hg);
 
         current_metrics.km1 -= max_gain;
