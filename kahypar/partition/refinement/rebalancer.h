@@ -43,9 +43,10 @@ class Rebalancer {
     k(context.partition.k),
     _queues(),
     _queue_weights(k, 0),
-    _heaviest_node_weight(0), //TODO
+    _heaviest_node_weight(0), //TODO(fritsch)
     _current_upper_bound(0),
-    _adjacency_bitmap(k * (k - 1), false) { }
+    _adjacency_bitmap(k * (k - 1), false),
+    _was_inserted_into_q_bitmap(hg.initialNumNodes()) { }
 
     ~Rebalancer() = default;
 
@@ -136,7 +137,14 @@ class Rebalancer {
               } else {
                 insertIntoQ(move.node, to_part, newRelativeGain);
               }
-              //Try to insert all border nodes
+              //Try to insert all neighbours from former block
+              for (const HyperedgeID& edge : _hg.incidentEdges(move.node)) {
+                for (const HypernodeID& neighbour : _hg.pins(edge)) {
+                  if (!_hg.active(neighbour) || neighbour == move.node || _hg.partID(neighbour) != block) {
+                    tryToInsertIntoCorrectQ(move.node);
+                  }
+                }
+              }
             }
 
           } else {
@@ -157,7 +165,17 @@ class Rebalancer {
 
 
   private:
-    inline void insertIntoQ(HypernodeID node, PartitionID to_part, Gain relativeGain) {
+    inline bool tryToInsertIntoCorrectQ(HypernodeID node) {
+      const std::pair<PartitionID, Gain> relativeGainMove = highestGainMoveToNotOverloadedBlock(node);
+      const PartitionID to_part = relativeGainMove.first;
+      const Gain relativeGain = relativeGainMove.second;
+      return insertIntoQ(node, to_part, relativeGain);
+    }
+
+    inline bool insertIntoQ(HypernodeID node, PartitionID to_part, Gain relativeGain) {
+      if (_was_inserted_into_q_bitmap[node]) {
+        return false;
+      }
       PartitionID from_part = _hg.partID(node);
       NodeMove move {node, to_part};
       ASSERT(!_queues[from_part].contains(nodeMoveToInt(move)));
@@ -165,11 +183,13 @@ class Rebalancer {
       ASSERT(to_part != from_part);
       _queues[from_part].push(nodeMoveToInt(move), relativeGain);
       _queue_weights[from_part] += _hg.nodeWeight(node);
+      return true;
     }
 
     inline void reset() {
       std::fill(_queue_weights.begin(), _queue_weights.end(), 0);
       std::fill(_adjacency_bitmap.begin(), _adjacency_bitmap.end(), false);
+      std::fill(_was_inserted_into_q_bitmap.begin(), _was_inserted_into_q_bitmap.end(), false);
       for (Queue&  q : _queues) {
         q.clear();
       }
@@ -255,5 +275,6 @@ class Rebalancer {
     HypernodeWeight _heaviest_node_weight;
     HypernodeWeight _current_upper_bound;
     std::vector<bool> _adjacency_bitmap;
+    std::vector<bool> _was_inserted_into_q_bitmap;
 };
 }
