@@ -122,12 +122,13 @@ class Rebalancer {
             continue;
           }
           NodeMove move = nodeMoveFromInt(_queues[block].max());
-          _queues[block].popMax();
-          ASSERT(!_queues[block].contains(nodeMoveToInt(move)));
           ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)));
-          _queue_weights[block] -= _hg.nodeWeight(move.node);
           if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound
-          || false) /* gain changed */ {
+          || gainChangedFor(move.node, move.to_part))  {
+            _queues[block].popMax();
+            ASSERT(!_queues[block].contains(nodeMoveToInt(move)));
+            _queue_weights[block] -= _hg.nodeWeight(move.node);
+            
             if (_hg.isBorderNode(move.node)) {
               std::pair<PartitionID, Gain> newMove = highestGainMoveToNotOverloadedBlock(move.node);
               PartitionID to_part = newMove.first;
@@ -148,6 +149,9 @@ class Rebalancer {
             }
 
           } else {
+            _queues[block].popMax();
+            ASSERT(!_queues[block].contains(nodeMoveToInt(move)));
+            _queue_weights[block] -= _hg.nodeWeight(move.node);  
             DBG << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]";
             ASSERT(_hg.nodeIsEnabled(move.node));
             refiner.moveNodeExternallyAndKeepInternalCacheCorrect(move.node, block, move.to_part);
@@ -165,6 +169,14 @@ class Rebalancer {
 
 
   private:
+    inline bool gainChangedFor(HypernodeID node, PartitionID to_part) {
+      NodeMove move{node, to_part};
+      HypernodeID moveID = nodeMoveToInt(move);
+      ASSERT(_queues[_hg.partID(node)].contains(moveID));
+      Gain actualGain = gainInducedByHypergraph(node, to_part);
+      return actualGain == _queues[_hg.partID(node)].getKey(moveID);
+    }
+
     inline bool tryToInsertIntoCorrectQ(HypernodeID node) {
       const std::pair<PartitionID, Gain> relativeGainMove = highestGainMoveToNotOverloadedBlock(node);
       const PartitionID to_part = relativeGainMove.first;
