@@ -43,7 +43,6 @@ class Rebalancer {
     k(context.partition.k),
     _queues(),
     _queue_weights(k, 0),
-    _heaviest_node_weight(0), //TODO(fritsch)
     _current_upper_bound(0),
     _adjacency_bitmap(k * (k - 1), false),
     _was_inserted_into_q_bitmap(hg.initialNumNodes()) { }
@@ -63,8 +62,7 @@ class Rebalancer {
     }
 
     void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics) {
-      _current_upper_bound = std::max((1.0 + _context.partition.epsilon) * static_cast<double>(_hg.totalWeight()) / static_cast<double>(k),
-                                                    heaviest_node_weight + static_cast<double>(_hg.totalWeight()) / static_cast<double>(k));
+      _current_upper_bound = refiner.currentUpperBlockWeightBound();
       reset();
       // ------------------------------
       // calculate connected blocks
@@ -100,7 +98,7 @@ class Rebalancer {
           insertIntoQ(node, to_part, relativeGain);
         } else if (relativeGain > _queues[from_part].minKey()) {
           insertIntoQ(node, to_part, relativeGain);
-          if (_queue_weights[from_part] > excessWeight(from_part) + _heaviest_node_weight) {
+          if (_queue_weights[from_part] > excessWeight(from_part) + heaviest_node_weight) {
             NodeMove removedMove = nodeMoveFromInt(_queues[from_part].min());
             _queues[from_part].popMin();
             _queue_weights[from_part] -= _hg.nodeWeight(removedMove.node);
@@ -284,7 +282,6 @@ class Rebalancer {
     PartitionID k;
     std::vector<Queue> _queues;
     std::vector<HypernodeWeight> _queue_weights;
-    HypernodeWeight _heaviest_node_weight;
     HypernodeWeight _current_upper_bound;
     std::vector<bool> _adjacency_bitmap;
     std::vector<bool> _was_inserted_into_q_bitmap;

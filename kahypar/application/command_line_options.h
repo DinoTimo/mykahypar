@@ -150,9 +150,10 @@ po::options_description createFlowRefinementOptionsDescription(Context& context,
       }
     }),
     "Acceptance Polices:\n"
-    " - holding     : hold high imbalance early and approach quickly later\n"
-    " - approaching : approach balance slowly\n"
-    " - staircase   : approach balance in large steps\n"
+    " - holding       : hold high imbalance early and approach quickly later\n"
+    " - approaching   : approach balance slowly\n"
+    " - staircase     : approach balance in large steps\n"
+    " - heaviest_node : approach balance with ideal weight + heaviest node weight\n"
     "(default: UNDEFINED)");
 
   return options;

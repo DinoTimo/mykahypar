@@ -24,6 +24,7 @@
 #include "kahypar/macros.h"
 #include "kahypar/meta/typelist.h"
 #include "kahypar/partition/context.h"
+#include "kahypar/partition/metrics.h"
 
 #include <limits>
 #include <stack>
@@ -64,8 +65,7 @@ class FlowAcceptancePolicy : public meta::PolicyBase {
 
 class BalanceApproachingAcceptancePolicy : public FlowAcceptancePolicy {
   using Base = FlowAcceptancePolicy;
-  //friend Base;
-
+  
   public:
     BalanceApproachingAcceptancePolicy() : Base() { }
 
@@ -178,8 +178,28 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
     }
 };
 
+
+
+class HeaviestNodePolicy : public FlowAcceptancePolicy {
+  using Base = FlowAcceptancePolicy;
+
+  public:
+    HeaviestNodePolicy() : Base() { }
+
+    //TODO(fritsch) heaviest node weight is already maintained in coarsener base and calculated again
+    HypernodeWeight currentUpperBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
+      return std::max((1.0 + context.partition.epsilon) * static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k),
+                                                    hypergraph.weightOfHeaviestNode() + static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k));
+    }
+
+    HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
+      return 2 * _ideal_block_weight - currentUpperBlockWeightBound(hypergraph, context);
+    }
+};
+
 using FlowAcceptancePolicyClasses = meta::Typelist< BalanceApproachingAcceptancePolicy, 
                                                 ImbalanceHoldingAcceptancePolicy, 
-                                                StaircaseAcceptancePolicy>;
+                                                StaircaseAcceptancePolicy,
+                                                HeaviestNodePolicy>;
 } // namespace kahypar
 

@@ -105,4 +105,6 @@ REGISTER_POLICY(AcceptanceRule, AcceptanceRule::imbalance_holding,
                 ImbalanceHoldingAcceptancePolicy);
 REGISTER_POLICY(AcceptanceRule, AcceptanceRule::staircase,
                 StaircaseAcceptancePolicy);
+REGISTER_POLICY(AcceptanceRule, AcceptanceRule::heaviest_node,
+                HeaviestNodePolicy);
 }  // namespace kahypar

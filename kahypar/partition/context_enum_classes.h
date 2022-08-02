@@ -203,6 +203,7 @@ enum class AcceptanceRule : uint8_t {
   balance_approaching,
   imbalance_holding,
   staircase,
+  heaviest_node,
   UNDEFINED
 };
 
@@ -484,6 +485,7 @@ static std::ostream& operator<< (std::ostream& os, const AcceptanceRule& rule) {
     case AcceptanceRule::balance_approaching: return os << "balance_approaching";
     case AcceptanceRule::imbalance_holding: return os << "imbalance_holding";
     case AcceptanceRule::staircase: return os << "staircase";
+    case AcceptanceRule::heaviest_node: return os << "heaviest_node";
     case AcceptanceRule::UNDEFINED: return os << "UNDEFINED";
       // omit default case to trigger compiler warning for missing cases
   }
@@ -780,6 +782,8 @@ static AcceptanceRule flowAcceptancePolicyFromString(const std::string& mode) {
     return AcceptanceRule::imbalance_holding;
   } else if (mode == "staircase") {
     return AcceptanceRule::staircase;
+  } else if (mode == "heaviest_node") {
+    return AcceptanceRule::heaviest_node;
   }
   LOG << "No valid acceptance policy.";
   exit(0);
