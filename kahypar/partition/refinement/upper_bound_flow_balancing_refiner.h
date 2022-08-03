@@ -99,9 +99,17 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
-    _acceptance_policy() { }
+    _acceptance_policy(),
+    _rebalance_execution_policy(),
+    _rebalancer(hypergraph, context),
+    _rebalance_steps() { 
+    }
 
-  ~UpperBoundKwayKMinusOneRefiner() override = default;
+  ~UpperBoundKwayKMinusOneRefiner() override {
+    if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1 || _context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
+      writeVectorToFile(_rebalance_steps, "../partitioning_results/data/rebalance_steps.txt");
+    }
+  }
 
   UpperBoundKwayKMinusOneRefiner(const UpperBoundKwayKMinusOneRefiner&) = delete;
   UpperBoundKwayKMinusOneRefiner& operator= (const UpperBoundKwayKMinusOneRefiner&) = delete;
@@ -109,36 +117,11 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   UpperBoundKwayKMinusOneRefiner(UpperBoundKwayKMinusOneRefiner&&) = delete;
   UpperBoundKwayKMinusOneRefiner& operator= (UpperBoundKwayKMinusOneRefiner&&) = delete;
 
- void moveNodeExternallyAndKeepInternalCacheCorrect(HypernodeID node, PartitionID from_part, PartitionID to_part) override {
-  _hg.changeNodePart(node, from_part, to_part);
-  FlowBase::updateFlow(node, from_part, to_part);
-  Base::updatePQpartState(from_part,
-                          to_part,
-                          _context.partition.max_part_weights[from_part],
-                          _context.partition.max_part_weights[to_part]);
-    /*bool nodeWasInactive = !_hg.active(node);
-    if (nodeWasInactive) {
-      _hg.activate(node);
-    }
-    if (!_hg.marked(node)) {
-      _hg.mark(node);
-    }
-    Base::moveHypernode(node, from_part, to_part);
-    if (nodeWasInactive) {
-      _hg.deactivate(node);
-    }
-    if (_gain_cache.entryExists(node)) {
-      if (_gain_cache.adjacentParts(node).contains(to_part)) {
-        _gain_cache.adjacentParts(node).remove(to_part);
-      }
-      if (!_gain_cache.adjacentParts(node).contains(from_part)) {
-        //_gain_cache.adjacentParts(node).add(from_part);
-      }
-    }
-    updateNeighbours(node, from_part, to_part);*/
- }
-
  private:
+  FRIEND_TEST(ARebalancer, UnbalancedHypergraphRebalancingTest);
+  FRIEND_TEST(ARebalancer, balancedHypergraphRebalancingTest);
+  
+
   void initializeImpl(const HyperedgeWeight max_gain) override final {
     if (!_is_initialized) {
 #ifdef USE_BUCKET_QUEUE
@@ -147,6 +130,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       unused(max_gain);
       _pq.initialize(_hg.initialNumNodes());
 #endif
+      _rebalancer.initialize();
+      _rebalance_execution_policy.initialize(_hg, _context);
       _flow_execution_policy.initialize(_hg, _context);
       _is_initialized = true;
     }
@@ -169,6 +154,17 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
   }
 
+  void performRebalancing(Metrics& best_metrics, std::vector<HypernodeID>& refinement_nodes) {
+    _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, best_metrics, refinement_nodes);
+    _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
+  }
+
+  void setStep0Values() {
+    _step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
+    _step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+    _acceptance_policy.init(_step0_smallest_block_weight, _step0_heaviest_block_weight, _total_num_steps, _hg, _context);
+  }
+
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
                   const std::array<HypernodeWeight, 2>&,
                   const UncontractionGainChanges&,
@@ -176,18 +172,18 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg), V(best_metrics.km1) << V(metrics::km1(_hg)));
     HEAVY_REFINEMENT_ASSERT(best_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg), V(best_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg)));
     HEAVY_REFINEMENT_ASSERT(best_metrics.standard_deviation == metrics::standard_deviation(_hg), V(best_metrics.standard_deviation) << V(metrics::standard_deviation(_hg)));
-    
+    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
+      LOG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
+      performRebalancing(best_metrics, refinement_nodes);
+      LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight;
+    }
     //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
     uint32_t k = _context.partition.k;
     if (_hg.currentNumNodes() - k == 0) {
       return false;
     }
-    if (!_initial_imbalance_set) {
-      _initial_imbalance_set = true;
-      _step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
-      _step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-      _total_num_steps = _hg.initialNumNodes() - k;
-      _acceptance_policy.init(_step0_smallest_block_weight, _step0_heaviest_block_weight, _total_num_steps, _hg, _context);
+    if (!_step0_imbalance_set) {
+      _step0_imbalance_set = true;
     }
     Base::reset();
     _unremovable_he_parts.reset();
@@ -1056,7 +1052,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   using FlowBase::_num_flow_nodes;
   using FlowBase::_step0_smallest_block_weight;
   using FlowBase::_step0_heaviest_block_weight;
-  using FlowBase::_initial_imbalance_set;
+  using FlowBase::_step0_imbalance_set;
   using FlowBase::_flow_execution_policy;
 
 
@@ -1081,6 +1077,9 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   AcceptancePolicy _acceptance_policy;
+  MultilevelFlowExecution _rebalance_execution_policy;
+  Rebalancer _rebalancer;
+  std::vector<PartitionID> _rebalance_steps;
 
 };
 }  // namespace kahypar

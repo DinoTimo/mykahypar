@@ -61,7 +61,7 @@ class Rebalancer {
       }
     }
 
-    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics) {
+    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes) {
       _current_upper_bound = refiner.currentUpperBlockWeightBound();
       reset();
       // ------------------------------
@@ -111,6 +111,7 @@ class Rebalancer {
       // empty binary heaps
       // ------------------------------
       bool movedAnythingThisIteration = false;
+      std::vector<Move> moves;
       do {
         movedAnythingThisIteration = false;
         //block order policy
@@ -145,20 +146,25 @@ class Rebalancer {
                 }
               }
             }
-
           } else {
             _queues[block].popMax();
             ASSERT(!_queues[block].contains(nodeMoveToInt(move)));
             _queue_weights[block] -= _hg.nodeWeight(move.node);  
             DBG << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]";
             ASSERT(_hg.nodeIsEnabled(move.node));
-            refiner.moveNodeExternallyAndKeepInternalCacheCorrect(move.node, block, move.to_part);
-            // mark other gains as invalid
+            _hg.changeNodePart(move.node, block, move.to_part);
+            moves.push_back(Move{move.node, block, move.to_part});
             ASSERT(!_queues[block].contains(nodeMoveToInt(NodeMove{move.node, block})));
             movedAnythingThisIteration = true;
           }
         }
       } while(movedAnythingThisIteration);
+      UncontractionGainChanges emptyGains;
+      //rollback moves
+      for (const Move& move : moves) {
+        _hg.changeNodePart(move.hn, move.to, move.from);
+      }
+      refiner.performMovesAndUpdateCache(moves, refinement_nodes, emptyGains);
       current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
       current_metrics.standard_deviation = metrics::standard_deviation(_hg);
       //TODO(fritsch) update and dont fully compute again
@@ -179,18 +185,34 @@ class Rebalancer {
       const std::pair<PartitionID, Gain> relativeGainMove = highestGainMoveToNotOverloadedBlock(node);
       const PartitionID to_part = relativeGainMove.first;
       const Gain relativeGain = relativeGainMove.second;
-      return insertIntoQ(node, to_part, relativeGain);
+      return tryToInsertIntoQ(node, to_part, relativeGain);
+    }
+
+    inline bool tryToInsertIntoQ(HypernodeID node, PartitionID to_part, Gain relativeGain) {
+      PartitionID from_part = _hg.partID(node);
+      ASSERT(to_part != from_part);
+      NodeMove move {node, to_part};
+      if (!_queues[from_part].contains(nodeMoveToInt(move))) {
+        return insertIntoQ(node, to_part, relativeGain);
+      }
+      return false;
     }
 
     inline bool insertIntoQ(HypernodeID node, PartitionID to_part, Gain relativeGain) {
-      if (_was_inserted_into_q_bitmap[node]) {
+      if (_was_inserted_into_q_bitmap[node] && false) {
         return false;
       }
       PartitionID from_part = _hg.partID(node);
-      NodeMove move {node, to_part};
-      ASSERT(!_queues[from_part].contains(nodeMoveToInt(move)));
-      ASSERT(!_queues[to_part].contains(nodeMoveToInt(move)));
       ASSERT(to_part != from_part);
+      NodeMove move {node, to_part};
+      ASSERT([&]() {
+        int q_index = 0;
+        for (const Queue& q : _queues) {
+          ASSERT(!q.contains(nodeMoveToInt(move)), V(node) << ", " << V(to_part) << ", " << V(q_index) << ", " << V(from_part));
+          q_index++;
+        }
+        return true;
+      } (), "Queues invalid");
       _queues[from_part].push(nodeMoveToInt(move), relativeGain);
       _queue_weights[from_part] += _hg.nodeWeight(node);
       return true;

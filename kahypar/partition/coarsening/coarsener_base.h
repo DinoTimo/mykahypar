@@ -59,21 +59,14 @@ class CoarsenerBase {
     _max_hn_weights(),
     _hypergraph_pruner(_hg.initialNumNodes()),
     _coarsening_progress_bar(_hg.initialNumNodes(), 0,
-      context.partition.verbose_output && context.type == ContextType::main),
-    _rebalance_execution_policy(),
-    _rebalancer(hypergraph, context),
-    _initialized_policy(false),
-    _rebalance_steps() {
-      _rebalancer.initialize();
+      context.partition.verbose_output && context.type == ContextType::main) {
       _history.reserve(_hg.initialNumNodes());
       _max_hn_weights.reserve(_hg.initialNumNodes());
       _max_hn_weights.emplace_back(CurrentMaxNodeWeight { _hg.initialNumNodes(),
                                                           weight_of_heaviest_node });
   }
 
-  virtual ~CoarsenerBase() {
-    writeVectorToFile(_rebalance_steps, "../partitioning_results/data/rebalance_steps.txt");
-  }
+  virtual ~CoarsenerBase() = default;
 
   CoarsenerBase(const CoarsenerBase&) = delete;
   CoarsenerBase& operator= (const CoarsenerBase&) = delete;
@@ -134,10 +127,6 @@ class CoarsenerBase {
   void performLocalSearch(IRefiner& refiner, std::vector<HypernodeID>& refinement_nodes,
                           Metrics& current_metrics,
                           const UncontractionGainChanges& changes) {
-    if (!_initialized_policy) {
-      _rebalance_execution_policy.initialize(_hg, _context);
-      _initialized_policy = true;
-    }
     ASSERT(changes.representative.size() != 0, "0");
     ASSERT(changes.contraction_partner.size() != 0, "0");
     bool improvement_found = performLocalSearchIteration(refiner, refinement_nodes, changes,
@@ -151,13 +140,6 @@ class CoarsenerBase {
       improvement_found = performLocalSearchIteration(refiner, refinement_nodes, no_changes,
                                                       current_metrics);
       ++iteration;
-    }
-    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
-      LOG << "Starting rebalancing";
-      _rebalancer.rebalance(_max_hn_weights.back().max_weight, refiner, current_metrics);
-      _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
-      LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes";
-      refiner.initialize(0);
     }
   }
 
@@ -203,9 +185,5 @@ class CoarsenerBase {
   std::vector<CurrentMaxNodeWeight> _max_hn_weights;
   HypergraphPruner _hypergraph_pruner;
   ProgressBar _coarsening_progress_bar;
-  MultilevelFlowExecution _rebalance_execution_policy; //Abstract this somehow
-  Rebalancer _rebalancer;
-  bool _initialized_policy;
-  std::vector<PartitionID> _rebalance_steps;
 };
 }  // namespace kahypar

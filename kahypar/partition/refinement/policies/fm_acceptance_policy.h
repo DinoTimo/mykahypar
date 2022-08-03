@@ -77,7 +77,9 @@ class BalanceApproachingAcceptancePolicy : public FlowAcceptancePolicy {
       current_pseudo_step = std::min(current_pseudo_step, _total_num_steps);
       double exponent = 1 - ((static_cast<double>(current_pseudo_step)) / static_cast<double>((_total_num_steps)));
       double modifier = std::pow(initialImbalance / initialPureUpper, exponent);
-      return static_cast<HypernodeWeight>((_ideal_block_weight + blockWeightDelta(context, current_step)) * modifier);
+      double returnValue = (_ideal_block_weight + blockWeightDelta(context, current_step)) * modifier;
+      ASSERT(returnValue > _ideal_block_weight, V(returnValue) << ", " << V(_ideal_block_weight));
+      return static_cast<HypernodeWeight>(returnValue);
     }
 
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {

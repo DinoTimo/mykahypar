@@ -37,8 +37,8 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _flow_solver(),
       _step0_smallest_block_weight(0),
       _step0_heaviest_block_weight(0),
-      _initial_imbalance_set(false),
-      _total_num_steps(0),
+      _step0_imbalance_set(false),
+      _total_num_steps(hypergraph.initialNumNodes() - context.partition.k),
       _current_step(0),
       _num_flow_nodes(context.partition.k),
       _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
@@ -253,7 +253,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     FlowSolver<HypernodeWeight, PartitionID> _flow_solver;
     HypernodeWeight _step0_smallest_block_weight;
     HypernodeWeight _step0_heaviest_block_weight;
-    bool _initial_imbalance_set;
+    bool _step0_imbalance_set;
     uint32_t _total_num_steps;
     uint32_t _current_step;
     PartitionID _num_flow_nodes;

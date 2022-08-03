@@ -50,10 +50,6 @@ class IRefiner {
                       best_metrics);
   }
   
-  virtual void moveNodeExternallyAndKeepInternalCacheCorrect(HypernodeID, PartitionID, PartitionID) { 
-    LOG << "Invalid call";
-  }
-
   void initialize(const HyperedgeWeight max_gain) {
     initializeImpl(max_gain);
   }
