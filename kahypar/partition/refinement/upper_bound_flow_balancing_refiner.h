@@ -172,6 +172,10 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg), V(best_metrics.km1) << V(metrics::km1(_hg)));
     HEAVY_REFINEMENT_ASSERT(best_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg), V(best_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg)));
     HEAVY_REFINEMENT_ASSERT(best_metrics.standard_deviation == metrics::standard_deviation(_hg), V(best_metrics.standard_deviation) << V(metrics::standard_deviation(_hg)));
+    if (!_step0_imbalance_set) {
+      _step0_imbalance_set = true;
+      setStep0Values();
+    }
     if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
       LOG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
       performRebalancing(best_metrics, refinement_nodes);
@@ -182,9 +186,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     if (_hg.currentNumNodes() - k == 0) {
       return false;
     }
-    if (!_step0_imbalance_set) {
-      _step0_imbalance_set = true;
-    }
+  
     Base::reset();
     _unremovable_he_parts.reset();
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
