@@ -409,6 +409,9 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-balance-convergence-speed" : "r-fm-balance-convergence-speed"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_speed : &context.local_search.fm.balance_convergence_speed))->value_name("<double>"),
     "Parameter for how quickly the partition must fulfill the balance constraint")
+    ((initial_partitioning ? "i-r-fm-only-km1-improving" : "r-fm-only-km1-improving"),
+    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.only_km1_improving : &context.local_search.fm.only_km1_improving))->value_name("<bool>"),
+    "Restrict refiner to only make moves that improve km1. A woarsening in balance is prohibited.")
     ((initial_partitioning ? "i-r-fm-km1-increase-tolerance" : "r-fm-km1-increase-tolerance"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.km1_increase_tolerance : &context.local_search.fm.km1_increase_tolerance))->value_name("<double>"),
     "Parameter on how much the km1 goal might be worsenend to ensure balanced solutions")

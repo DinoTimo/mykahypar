@@ -194,6 +194,7 @@ struct LocalSearchParameters {
     double balance_convergence_speed = std::numeric_limits<double>::max();
     double balance_convergence_time = std::numeric_limits<double>::max();
     bool use_rebalancer = false;
+    bool only_km1_improving = false;
     double km1_increase_tolerance = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
@@ -255,10 +256,10 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     }
     if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
       str << "    acceptance policy:                " << params.flow.acceptance_policy << std::endl;
-      if (params.flow.execution_policy == FlowExecutionMode::constant) {
+      if (params.flow.acceptance_policy == AcceptanceRule::staircase) {
         str << "    rounding zeta:                    " << params.flow.rounding_zeta << std::endl;
       }
-      
+      str << "    only km1 improving moves:         " << params.fm.only_km1_improving << std::endl;
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
       str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
       str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;

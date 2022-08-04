@@ -149,8 +149,11 @@ class CoarsenerBase {
                                    Metrics& current_metrics) {
     const HyperedgeWeight old_cut = current_metrics.cut;
     const HyperedgeWeight old_km1 = current_metrics.km1;
+    
+#ifdef KAHYPAR_USE_ASSERTIONS
     const HypernodeWeight old_heaviest_block = current_metrics.heaviest_block_weight;
     const double old_standard_deviation = current_metrics.standard_deviation; //TODO(fritsch) this is technically duplicated code from the fm improvement policy
+#endif
     bool improvement_found = refiner.refine(refinement_nodes,
                                             { _context.partition.max_part_weights[0]
                                               + _max_hn_weights.back().max_weight,

@@ -272,7 +272,9 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                     _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound;      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
-      if ((imbalanced_but_improves_balance || balanced_and_keeps_balance) && !emptying_block) {
+      const bool default_move_acceptance_cond = (imbalanced_but_improves_balance || balanced_and_keeps_balance) && !emptying_block; 
+      if ((!_context.local_search.fm.only_km1_improving && default_move_acceptance_cond)
+      ||  ( _context.local_search.fm.only_km1_improving && max_gain > 0)) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         FlowBase::updateFlow(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
@@ -314,9 +316,12 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                                  improved_km1;
         const bool improved_balance_less_equal_km1 = better_balance &&
                                                      (current_metrics.km1 <= best_metrics.km1);
-        if ( ((balancing)             && (improved_km1_within_balance || improved_balance_less_equal_km1 || better_balance_when_unbalanced_with_km1_tolerance))
+        const bool default_partition_acceptance_condition = 
+             ((balancing)             && (improved_km1_within_balance || improved_balance_less_equal_km1 || better_balance_when_unbalanced_with_km1_tolerance))
           || ((unbalanced_optimizing) && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_km1))
-          || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1))) { 
+          || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1));
+        if ( (!_context.local_search.fm.only_km1_improving && default_partition_acceptance_condition)
+          || ( _context.local_search.fm.only_km1_improving && improved_km1)) { 
           DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
                               << "and" << to_part << "(max_gain=" << max_gain << ")";
           DBGC(current_metrics.km1 < best_metrics.km1) << "KWayFM improved cut from "
