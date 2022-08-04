@@ -57,7 +57,7 @@ class Rebalancer {
 
     void initialize() {
       for (PartitionID part = 0; part < k; part++) {
-        _queues.emplace_back(_hg.initialNumNodes()); //this is too large TODO(fritsch)
+        _queues.emplace_back(_hg.initialNumNodes() * k);
       }
     }
 
