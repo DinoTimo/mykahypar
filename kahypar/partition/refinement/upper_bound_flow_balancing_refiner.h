@@ -60,8 +60,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
           private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
-  static constexpr bool debug = false;
-  static constexpr HypernodeID hn_to_debug = 5589;
+  static constexpr bool debug = true;
 
   using GainCache = KwayGainCache<Gain>;
   using Base = FMRefinerBase<RollbackInfo, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
@@ -155,8 +154,11 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   }
 
   void performRebalancing(Metrics& best_metrics, std::vector<HypernodeID>& refinement_nodes) {
-    _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, best_metrics, refinement_nodes);
     _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
+    while(best_metrics.heaviest_block_weight > currentUpperBlockWeightBound()) { //TODO(fritsch) dont recalculate this
+      _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, best_metrics, refinement_nodes);
+    }
+
   }
 
   void setStep0Values() {
@@ -176,10 +178,12 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _step0_imbalance_set = true;
       setStep0Values();
     }
-    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer) {
-      LOG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
+    if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer && best_metrics.heaviest_block_weight > currentUpperBlockWeightBound()) {
+      //By reordering the first condition a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
+      //This behaviour is currently desired this way
+      DBG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
       performRebalancing(best_metrics, refinement_nodes);
-      LOG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight;
+      DBG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight << "\n\n";
     }
     //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
     uint32_t k = _context.partition.k;
@@ -217,9 +221,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       FlowBase::init(currentUpperBound, current_metrics.heaviest_block_weight);
     }
 
-    DBG << "Current ideal block weight is: " << std::to_string(FlowBase::idealBlockWeight()) << " at step: " << std::to_string(_current_step) << " of a total of " << std::to_string(_total_num_steps) << " steps."; 
-    DBG << "Current upper bound block weight is: " << std::to_string(currentUpperBound); 
-    DBG << "Current lower block weight is: " << std::to_string(currentLowerBound); 
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
                                                               current_metrics.km1)) {
@@ -229,8 +230,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _pq.deleteMax(max_gain_node, max_gain, to_part);
       const PartitionID from_part = _hg.partID(max_gain_node);
 
-      DBG << V(current_metrics.km1) << V(max_gain_node) << V(max_gain)
-          << V(_hg.partID(max_gain_node)) << V(to_part);
+      DBG0 << V(current_metrics.km1) << V(max_gain_node) << V(max_gain)
+           << V(_hg.partID(max_gain_node)) << V(to_part);
 
       ASSERT(!_hg.marked(max_gain_node), V(max_gain_node));
       HEAVY_REFINEMENT_ASSERT(max_gain == gainInducedByHypergraph(max_gain_node, to_part),
@@ -322,10 +323,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
           || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1));
         if ( (!_context.local_search.fm.only_km1_improving && default_partition_acceptance_condition)
           || ( _context.local_search.fm.only_km1_improving && improved_km1)) { 
-          DBGC(max_gain == 0) << "KWayFM improved balance between" << from_part
-                              << "and" << to_part << "(max_gain=" << max_gain << ")";
-          DBGC(current_metrics.km1 < best_metrics.km1) << "KWayFM improved cut from "
-                                               << best_metrics.km1 << "to" << current_metrics.km1;
           best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
@@ -352,7 +349,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         }
       }
     }
-    DBG << "KWayFM performed "
+    DBG0 << "KWayFM performed "
         << _performed_moves.size()
         << "local search movements ( min_cut_index=" << min_cut_index << "): stopped because of "
         << (_stopping_policy.searchShouldStop(touched_hns_since_last_improvement, _context, beta,
@@ -444,13 +441,10 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     ONLYDEBUG(he);
     if (move_decreased_connectivity && _gain_cache.entryExists(pin, from_part) &&
         !Base::hypernodeIsConnectedToPart(pin, from_part)) {
-      DBGC(hn_to_debug == pin) << "removing cache entry for HN" << pin << "part=" << from_part;
       _gain_cache.removeEntryDueToConnectivityDecrease(pin, from_part);
     }
     if (move_increased_connectivity && !_gain_cache.entryExists(pin, to_part)) {
       ASSERT(_hg.connectivity(he) >= 2, V(_hg.connectivity(he)));
-      DBGC(hn_to_debug == 8498) << "adding cache entry for HN" << pin << "part="
-                                << to_part << "gain=";
       _gain_cache.addEntryDueToConnectivityIncrease(pin, to_part,
                                                     gainInducedByHypergraph(pin, to_part));
       _new_adjacent_part.set(pin, to_part);
@@ -480,7 +474,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       ASSERT(_hg.connectivity(he) >= 2, V(_hg.connectivity(he)));
       ASSERT(_new_adjacent_part.get(pin) == Hypergraph::kInvalidPartition,
              V(_new_adjacent_part.get(pin)));
-      // LOG << "normal connectivity increase for" << pin << V(to_part);
       Gain gain = GainCache::kNotCached;
       if (_gain_cache.entryExists(pin, to_part)) {
         gain = _gain_cache.entry(pin, to_part);
@@ -522,7 +515,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                              pin_count_to_part_after_move == 2);
 
     for (const HypernodeID& pin : _hg.pins(he)) {
-      // LOG << V(pin) << V(_hg.active(pin)) << V(_hg.isBorderNode(pin));
       if (!only_update_cache && !_hg.marked(pin)) {
         ASSERT(pin != moved_hn, V(pin) << V(moved_hn));
         if (!_hg.active(pin)) {
@@ -760,7 +752,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
           bool valid = true;
           for (const HypernodeID& pin : _hg.pins(he)) {
             ASSERT_THAT_CACHE_IS_VALID_FOR_HN(pin);
-            // LOG << "HN" << pin << "CHECK!";
             if (!_hg.isBorderNode(pin)) {
               // The pin is an internal HN
               // there should not be any move of this HN in the PQ.
@@ -901,7 +892,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       ASSERT(Base::hypernodeIsConnectedToPart(pin, part), V(pin) << V(part));
       ASSERT(_hg.partID(pin) != part, V(pin) << V(part));
 
-      DBG << "updating gain of HN" << pin
+      DBG0 << "updating gain of HN" << pin
           << "from gain" << _pq.key(pin, part) << "to" << _pq.key(pin, part) + delta
           << "(to_part=" << part << ", ExpectedGain="
           << gainInducedByHypergraph(pin, part) << ")";
@@ -981,7 +972,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       }
       ASSERT(target_part.value - internal == gainInducedByHypergraph(hn, target_part.key),
              V(gainInducedByHypergraph(hn, target_part.key)) << V(target_part.value - internal));
-      DBGC(hn == hn_to_debug) << V(target_part.key) << V(target_part.value - internal);
       _gain_cache.initializeEntry(hn, target_part.key, target_part.value - internal);
     }
   }
@@ -997,7 +987,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                V(hn) << V(part) << V(_gain_cache.entry(hn, part)) <<
                V(gainInducedByHypergraph(hn, part)));
         HEAVY_REFINEMENT_ASSERT(Base::hypernodeIsConnectedToPart(hn, part), V(hn) << V(part));
-        DBGC(hn == 12518) << "inserting" << V(hn) << V(part) << V(_gain_cache.entry(hn, part));
         _pq.insert(hn, part, _gain_cache.entry(hn, part));
         if (_hg.partWeight(part) < _context.partition.max_part_weights[part]) {
           _pq.enablePart(part);
