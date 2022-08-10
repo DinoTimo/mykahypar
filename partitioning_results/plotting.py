@@ -51,6 +51,10 @@ def showImbalance():
     plt.vlines(rebalancesteps, 0, floatify(readLines(targetupperpath))[0], 'g', 'dashed', 'rebalance steps')
   plt.legend()
   infoLines = readLines(infopath)
+  infoLines.pop()
+  infoLines.pop()
+  infoLines.pop()
+  infoLines.pop()
   plt.title(', '.join(infoLines))
 
 
