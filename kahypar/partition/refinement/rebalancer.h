@@ -189,7 +189,6 @@ class Rebalancer {
       }
       refiner.performMovesAndUpdateCache(moves, refinement_nodes, emptyGains);
       current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-      current_metrics.standard_deviation = metrics::standard_deviation(_hg);
       //TODO(fritsch) update and dont fully compute again
       current_metrics.km1 = metrics::km1(_hg);
     }

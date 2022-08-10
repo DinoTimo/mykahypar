@@ -82,8 +82,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
                                 metrics::km1(_hg),
                                 metrics::imbalance(_hg, _context),
                                 metrics::heaviest_block_weight(_hg),
-                                metrics::smallest_block_weight(_hg),
-                                metrics::standard_deviation(_hg) };
+                                metrics::smallest_block_weight(_hg) };
     HyperedgeWeight initial_objective = std::numeric_limits<HyperedgeWeight>::min();
     switch (_context.partition.objective) {
       case Objective::cut:

@@ -35,7 +35,6 @@ struct Metrics {
   double imbalance;
   HypernodeWeight heaviest_block_weight;
   HypernodeWeight smallest_block_weight;
-  double standard_deviation;
 
   void updateMetric(const HyperedgeWeight value, const Mode mode, const Objective objective) {
     if (mode == Mode::direct_kway) {
@@ -56,11 +55,10 @@ struct Metrics {
     }
   }
 
-  void updateMetric(const HyperedgeWeight value, const Mode mode, const Objective objective, const HypernodeWeight max_block_weight, const HypernodeWeight min_block_weight, double standard_div) {
+  void updateMetric(const HyperedgeWeight value, const Mode mode, const Objective objective, const HypernodeWeight max_block_weight, const HypernodeWeight min_block_weight) {
     updateMetric(value, mode, objective);
     heaviest_block_weight = max_block_weight;
     smallest_block_weight = min_block_weight;
-    standard_deviation = standard_div;
   }
 
   HyperedgeWeight getMetric(const Mode mode, const Objective objective) {

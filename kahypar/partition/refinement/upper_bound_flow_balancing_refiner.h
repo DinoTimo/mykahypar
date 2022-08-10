@@ -175,7 +175,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                   Metrics& best_metrics) override final {
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg), V(best_metrics.km1) << V(metrics::km1(_hg)));
     HEAVY_REFINEMENT_ASSERT(best_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg), V(best_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg)));
-    HEAVY_REFINEMENT_ASSERT(best_metrics.standard_deviation == metrics::standard_deviation(_hg), V(best_metrics.standard_deviation) << V(metrics::standard_deviation(_hg)));
     if (!_step0_imbalance_set) {
       _step0_imbalance_set = true;
       setStep0Values();
@@ -291,7 +290,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-        current_metrics.standard_deviation = metrics::standard_deviation(_hg);
 
         current_metrics.km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -314,7 +312,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         const bool balanced_optimizing = current_metrics.heaviest_block_weight <= finalUpperBound;
 
         const bool better_balance = (current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight)
-                                 || ((current_metrics.heaviest_block_weight <= best_metrics.heaviest_block_weight) && (current_metrics.standard_deviation < best_metrics.standard_deviation));
+                                 || (current_metrics.heaviest_block_weight <= best_metrics.heaviest_block_weight);
         const bool improved_km1 = (current_metrics.km1 < best_metrics.km1);
         const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_metrics.heaviest_block_weight)
               && better_balance 

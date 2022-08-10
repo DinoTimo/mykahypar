@@ -152,7 +152,6 @@ class CoarsenerBase {
     
 #ifdef KAHYPAR_USE_ASSERTIONS
     const HypernodeWeight old_heaviest_block = current_metrics.heaviest_block_weight;
-    const double old_standard_deviation = current_metrics.standard_deviation; //TODO(fritsch) this is technically duplicated code from the fm improvement policy
 #endif
     bool improvement_found = refiner.refine(refinement_nodes,
                                             { _context.partition.max_part_weights[0]
@@ -165,10 +164,9 @@ class CoarsenerBase {
     HEAVY_REFINEMENT_ASSERT(
            (current_metrics.cut                   <= old_cut                && current_metrics.cut == metrics::hyperedgeCut(_hg)) ||
            (current_metrics.heaviest_block_weight <= old_heaviest_block     && current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg)) ||
-           (current_metrics.standard_deviation    <= old_standard_deviation && current_metrics.standard_deviation == metrics::standard_deviation(_hg)) ||
            (current_metrics.km1 <= old_km1 && current_metrics.km1 == metrics::km1(_hg)),
            V(current_metrics.cut) << V(old_cut) << V(metrics::hyperedgeCut(_hg))
-                                  << V(current_metrics.km1) << V(old_km1) << V(metrics::km1(_hg)));
+                                  << V(current_metrics.km1) << V(old_km1) << V(metrics::km1(_hg))); //TODO(fritsch) this is technically duplicated code from the fm improvement policy
 
     DBGC(_context.partition.objective == Objective::cut) << old_cut << "-->" << current_metrics.cut;
     DBGC(_context.partition.objective == Objective::km1) << old_km1 << "-->" << current_metrics.km1;

@@ -51,7 +51,6 @@ TEST_F(ARebalancer, UnbalancedHypergraphRebalancingTest) {
 
   Metrics best_metrics;
   best_metrics.heaviest_block_weight = metrics::heaviest_block_weight(*_hypergraph);
-  best_metrics.standard_deviation = metrics::standard_deviation(*_hypergraph);
   best_metrics.km1 = metrics::km1(*_hypergraph);
   std::vector<HypernodeID> refinementNodes;
 
