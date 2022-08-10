@@ -61,6 +61,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = true;
+  static constexpr size_t _max_rebalance_iter = 30; //TODO(fritsch) kinda magic
 
   using GainCache = KwayGainCache<Gain>;
   using Base = FMRefinerBase<RollbackInfo, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
@@ -155,10 +156,11 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
 
   void performRebalancing(Metrics& best_metrics, std::vector<HypernodeID>& refinement_nodes) {
     _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
-    while(best_metrics.heaviest_block_weight > currentUpperBlockWeightBound()) { //TODO(fritsch) dont recalculate this
+    size_t iter = 0;
+    while(best_metrics.heaviest_block_weight > currentUpperBlockWeightBound() && iter < _max_rebalance_iter) { //TODO(fritsch) dont recalculate this
+      iter++;
       _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, best_metrics, refinement_nodes);
     }
-
   }
 
   void setStep0Values() {
@@ -274,8 +276,13 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                     _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound;      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
       const bool default_move_acceptance_cond = (imbalanced_but_improves_balance || balanced_and_keeps_balance) && !emptying_block; 
-      if ((!_context.local_search.fm.only_km1_improving && default_move_acceptance_cond)
-      ||  ( _context.local_search.fm.only_km1_improving && max_gain > 0)) {
+      bool condition = false;
+      if (_context.local_search.fm.only_km1_improving) {
+        condition = max_gain > 0;
+      } else {
+        condition = default_move_acceptance_cond;
+      }
+      if (condition) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         FlowBase::updateFlow(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
@@ -321,8 +328,12 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
              ((balancing)             && (improved_km1_within_balance || improved_balance_less_equal_km1 || better_balance_when_unbalanced_with_km1_tolerance))
           || ((unbalanced_optimizing) && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_km1))
           || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1));
-        if ( (!_context.local_search.fm.only_km1_improving && default_partition_acceptance_condition)
-          || ( _context.local_search.fm.only_km1_improving && improved_km1)) { 
+        if (_context.local_search.fm.only_km1_improving) {
+          condition = improved_km1;
+        } else {
+          condition = default_partition_acceptance_condition;
+        }
+        if (condition) { 
           best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
