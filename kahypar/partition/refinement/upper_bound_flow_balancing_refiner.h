@@ -271,8 +271,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       const bool imbalanced_but_improves_balance = current_metrics.heaviest_block_weight > currentUpperBound &&
                                       FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node);
       const bool balanced_and_keeps_balance = current_metrics.heaviest_block_weight <= currentUpperBound &&
-                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound &&
-                    _hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound;      
+                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
       const bool default_move_acceptance_cond = (imbalanced_but_improves_balance || balanced_and_keeps_balance) && !emptying_block; 
       bool condition = false;
@@ -316,7 +315,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         const bool improved_km1 = (current_metrics.km1 < best_metrics.km1);
         const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_metrics.heaviest_block_weight)
               && better_balance 
-              && ((static_cast<double>(current_metrics.km1) / static_cast<double>(best_metrics.km1)) <= _context.local_search.fm.km1_increase_tolerance);
+              && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
         // kahypar
         const bool improved_km1_within_balance = (current_metrics.heaviest_block_weight <= currentUpperBound) &&
                                                  improved_km1;

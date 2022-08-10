@@ -160,14 +160,15 @@ class CoarsenerBase {
                                               + _max_hn_weights.back().max_weight },
                                             current_changes,
                                             current_metrics);
-
-    HEAVY_REFINEMENT_ASSERT(
-           (current_metrics.cut                   <= old_cut                && current_metrics.cut == metrics::hyperedgeCut(_hg)) ||
-           (current_metrics.heaviest_block_weight <= old_heaviest_block     && current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg)) ||
-           (current_metrics.km1 <= old_km1 && current_metrics.km1 == metrics::km1(_hg)),
-           V(current_metrics.cut) << V(old_cut) << V(metrics::hyperedgeCut(_hg))
-                                  << V(current_metrics.km1) << V(old_km1) << V(metrics::km1(_hg))); //TODO(fritsch) this is technically duplicated code from the fm improvement policy
-
+    HEAVY_REFINEMENT_ASSERT(current_metrics.cut == metrics::hyperedgeCut(_hg));
+    HEAVY_REFINEMENT_ASSERT(current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg));
+    HEAVY_REFINEMENT_ASSERT(current_metrics.km1 == metrics::km1(_hg));
+    ASSERT(current_metrics.cut                    <= old_cut             ||
+          (current_metrics.heaviest_block_weight  <= old_heaviest_block) ||
+          (current_metrics.km1                    <= old_km1), //TODO(fritsch check for some improvement)
+           V(current_metrics.cut) << V(old_cut) << V(current_metrics.cut)
+                                  << V(current_metrics.km1) << V(old_km1)); //TODO(fritsch) this is technically duplicated code from the fm improvement policy
+    ASSERT(_context.local_search.fm.use_rebalancer || old_km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1, V(old_km1) << V(current_metrics.km1));
     DBGC(_context.partition.objective == Objective::cut) << old_cut << "-->" << current_metrics.cut;
     DBGC(_context.partition.objective == Objective::km1) << old_km1 << "-->" << current_metrics.km1;
     return improvement_found;
