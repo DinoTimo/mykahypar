@@ -179,6 +179,12 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _step0_imbalance_set = true;
       setStep0Values();
     }
+    //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
+    uint32_t k = _context.partition.k;
+    if (_hg.currentNumNodes() - k == 0) {
+      return false;
+    }
+
     if (_rebalance_execution_policy.executeFlow(_hg) && _context.local_search.fm.use_rebalancer && best_metrics.heaviest_block_weight > currentUpperBlockWeightBound()) {
       //By reordering the first condition a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
       //This behaviour is currently desired this way
@@ -186,11 +192,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       performRebalancing(best_metrics, refinement_nodes);
       DBG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight << "\n\n";
     }
-    //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
-    uint32_t k = _context.partition.k;
-    if (_hg.currentNumNodes() - k == 0) {
-      return false;
-    }
+
   
     Base::reset();
     _unremovable_he_parts.reset();
@@ -214,8 +216,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     _stopping_policy.resetStatistics();
 
     HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
-    HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
-
+    
     const double beta = log(_hg.currentNumNodes());
 
     if (_flow_execution_policy.executeFlow(_hg) || _current_step <= 1) {
@@ -262,7 +263,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
       ASSERT(currentUpperBound > FlowBase::idealBlockWeight(), V(currentUpperBound));
-      ASSERT(currentLowerBound <  FlowBase::idealBlockWeight(), V(currentLowerBound));
       /**
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
@@ -304,27 +304,22 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
          * or C^i = C- && W^i < W-
          * or T <= W^i && W^i < W-
          */
-        const HypernodeWeight finalUpperBound = static_cast<HypernodeWeight>(static_cast<double>(FlowBase::idealBlockWeight()) * (1 + _context.partition.epsilon));
-        // Differentiate in between 3 modes
+        // Differentiate in between 2 modes
         const bool balancing = current_metrics.heaviest_block_weight > currentUpperBound;
-        const bool unbalanced_optimizing = current_metrics.heaviest_block_weight <= currentUpperBound && current_metrics.heaviest_block_weight > finalUpperBound; 
-        const bool balanced_optimizing = current_metrics.heaviest_block_weight <= finalUpperBound;
+        const bool refining = !balancing;
 
-        const bool better_balance = (current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight)
-                                 || (current_metrics.heaviest_block_weight <= best_metrics.heaviest_block_weight);
+        const bool improved_balance = (current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight);
         const bool improved_km1 = (current_metrics.km1 < best_metrics.km1);
-        const bool better_balance_when_unbalanced_with_km1_tolerance = (currentUpperBound < current_metrics.heaviest_block_weight)
-              && better_balance 
+        const bool improved_balance_within_km1_tolerance = improved_balance 
               && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
         // kahypar
         const bool improved_km1_within_balance = (current_metrics.heaviest_block_weight <= currentUpperBound) &&
                                                  improved_km1;
-        const bool improved_balance_less_equal_km1 = better_balance &&
+        const bool improved_balance_less_equal_km1 = improved_balance &&
                                                      (current_metrics.km1 <= best_metrics.km1);
         const bool default_partition_acceptance_condition = 
-             ((balancing)             && (improved_km1_within_balance || improved_balance_less_equal_km1 || better_balance_when_unbalanced_with_km1_tolerance))
-          || ((unbalanced_optimizing) && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_km1))
-          || ((balanced_optimizing)   && (improved_km1_within_balance || improved_balance_less_equal_km1));
+             ((balancing) && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_balance_within_km1_tolerance))
+          || ((refining)  && (improved_km1_within_balance || improved_balance_less_equal_km1));
         if (_context.local_search.fm.only_km1_improving) {
           condition = improved_km1;
         } else {
