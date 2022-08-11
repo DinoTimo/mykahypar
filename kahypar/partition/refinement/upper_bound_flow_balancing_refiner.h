@@ -1076,7 +1076,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   AcceptancePolicy _acceptance_policy;
-  MultilevelFlowExecution _rebalance_execution_policy;
+  RebalancerExecution _rebalance_execution_policy;
   Rebalancer _rebalancer;
   std::vector<PartitionID> _rebalance_steps;
 
