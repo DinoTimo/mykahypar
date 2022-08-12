@@ -7,7 +7,6 @@
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/refinement/flow/graph_flow_solver.h"
-#include "kahypar/partition/refinement/flow/flow_balancing_refiner.h"
 #include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
 #include "kahypar/partition/refinement/matrices/matrix.h"
 #include "kahypar/partition/refinement/matrices/matrix_solver.h"
@@ -57,14 +56,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
     HypernodeWeight idealBlockWeight() {
       return _hg.totalWeight() / _context.partition.k;
-    }
-    
-    bool isOverloadedBlock(PartitionID block) {
-      return _hg.partWeight(block) > idealBlockWeight();
-    }
-
-    bool isUnderloadedBlock(PartitionID block) {
-      return _hg.partWeight(block) < idealBlockWeight();
     }
 
     void init(HypernodeWeight currentUpperBound, HypernodeWeight currentWeight) {

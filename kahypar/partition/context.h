@@ -193,8 +193,6 @@ struct LocalSearchParameters {
     double adaptive_stopping_alpha = std::numeric_limits<double>::max();
     double balance_convergence_speed = std::numeric_limits<double>::max();
     double balance_convergence_time = std::numeric_limits<double>::max();
-    bool use_rebalancer = false;
-    bool only_km1_improving = false;
     double km1_increase_tolerance = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
@@ -227,11 +225,12 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
   str << "Local Search Parameters:" << std::endl;
   str << "  Algorithm:                          " << params.algorithm << std::endl;
   str << "  iterations per level:               " << params.iterations_per_level << std::endl;
-  str << "  use rebalancer:                     " << params.fm.use_rebalancer << std::endl;
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
+      params.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1 ||
+      params.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -242,10 +241,23 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
       str << "  adaptive stopping alpha:            " << params.fm.adaptive_stopping_alpha << std::endl;
     }
   }
+  if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 || params.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
+    str << "  High imbalance Refinement Parameters:" << std::endl;
+    str << "    acceptance policy:                " << params.flow.acceptance_policy << std::endl;
+      if (params.flow.acceptance_policy == AcceptanceRule::staircase) {
+        str << "    rounding zeta:                    " << params.flow.rounding_zeta << std::endl;
+      }
+    str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
+    str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;
+    if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {    
+      str << "    km1 increase tolerance:           " << params.fm.km1_increase_tolerance << std::endl;
+      str << "    flow model:                       " << params.fm.flow_model << std::endl;
+    }
+  }
+
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm ||
       params.algorithm == RefinementAlgorithm::kway_fm_km1 ||
-      params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
       params.algorithm == RefinementAlgorithm::twoway_fm_hyperflow_cutter ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1 ||
       params.algorithm == RefinementAlgorithm::kway_fm_hyperflow_cutter) {
@@ -253,17 +265,6 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     str << "    execution policy:                 " << params.flow.execution_policy << std::endl;
     if (params.flow.execution_policy == FlowExecutionMode::constant) {
       str << "    beta:                             " << params.flow.beta << std::endl;
-    }
-    if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
-      str << "    acceptance policy:                " << params.flow.acceptance_policy << std::endl;
-      if (params.flow.acceptance_policy == AcceptanceRule::staircase) {
-        str << "    rounding zeta:                    " << params.flow.rounding_zeta << std::endl;
-      }
-      str << "    only km1 improving moves:         " << params.fm.only_km1_improving << std::endl;
-      str << "    flow model:                       " << params.fm.flow_model << std::endl;
-      str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
-      str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;
-      str << "    km1 increase tolerance:           " << params.fm.km1_increase_tolerance << std::endl;
     }
   } else if (params.algorithm == RefinementAlgorithm::do_nothing) {
     str << "  no coarsening!  " << std::endl;
@@ -565,6 +566,7 @@ static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::kway_fm ||
       algo == RefinementAlgorithm::kway_fm_km1 ||
       algo == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
+      algo == RefinementAlgorithm::rebalancing_kway_fm_km1 ||
       algo == RefinementAlgorithm::kway_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1) {

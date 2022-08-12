@@ -40,8 +40,6 @@
 #include "kahypar/meta/template_parameter_to_string.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
-#include "kahypar/partition/refinement/flow/flow_balancing_refiner.h"
-#include "kahypar/partition/refinement/flow/quotient_graph_block_scheduler.h"
 #include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
@@ -56,20 +54,18 @@ template <class StoppingPolicy = Mandatory,
           class FlowExecutionPolicy = Mandatory,
           class AcceptancePolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
-class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
-          private FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
+class RebalancingKwayKMinusOneRefiner final : public IRefiner,
+          private FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = true;
+  static constexpr size_t _max_rebalance_iter = 30; //TODO(fritsch) kinda magic
 
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  using Base = FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
-  using FlowBase = FlowBalancingRefiner<RollbackInfo, FlowExecutionPolicy, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
-                                                                FMImprovementPolicy> >;
-
-  friend class FMRefinerBase<RollbackInfo, UpperBoundKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  friend class FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -91,29 +87,37 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   };
 
  public:
-  UpperBoundKwayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
-    FlowBase(hypergraph, context),
+  RebalancingKwayKMinusOneRefiner(Hypergraph& hypergraph, const Context& context) :
+    Base(hypergraph, context),
     _tmp_gains(_context.partition.k, 0),
     _new_adjacent_part(_hg.initialNumNodes(), Hypergraph::kInvalidPartition),
     _unremovable_he_parts(static_cast<size_t>(_hg.initialNumEdges()) * context.partition.k),
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
-    _acceptance_policy() { 
-    }
+    _acceptance_policy(),
+    _rebalance_execution_policy(),
+    _rebalancer(hypergraph, context),
+    _rebalance_steps(),
+    _step0_imbalance_set(false),
+    _total_num_steps(hypergraph.initialNumNodes() - context.partition.k),
+    _current_step(0) { }
 
-  ~UpperBoundKwayKMinusOneRefiner() override {
+  ~RebalancingKwayKMinusOneRefiner() override {
     if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1 || _context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
-      writeVectorToFile(std::vector<int>(), "../partitioning_results/data/rebalance_steps.txt");
+      writeVectorToFile(_rebalance_steps, "../partitioning_results/data/rebalance_steps.txt");
     }
   }
 
-  UpperBoundKwayKMinusOneRefiner(const UpperBoundKwayKMinusOneRefiner&) = delete;
-  UpperBoundKwayKMinusOneRefiner& operator= (const UpperBoundKwayKMinusOneRefiner&) = delete;
+  RebalancingKwayKMinusOneRefiner(const RebalancingKwayKMinusOneRefiner&) = delete;
+  RebalancingKwayKMinusOneRefiner& operator= (const RebalancingKwayKMinusOneRefiner&) = delete;
 
-  UpperBoundKwayKMinusOneRefiner(UpperBoundKwayKMinusOneRefiner&&) = delete;
-  UpperBoundKwayKMinusOneRefiner& operator= (UpperBoundKwayKMinusOneRefiner&&) = delete;
+  RebalancingKwayKMinusOneRefiner(RebalancingKwayKMinusOneRefiner&&) = delete;
+  RebalancingKwayKMinusOneRefiner& operator= (RebalancingKwayKMinusOneRefiner&&) = delete;
 
  private:
+  FRIEND_TEST(ARebalancer, UnbalancedHypergraphRebalancingTest);
+  FRIEND_TEST(ARebalancer, balancedHypergraphRebalancingTest);
+  
 
   void initializeImpl(const HyperedgeWeight max_gain) override final {
     if (!_is_initialized) {
@@ -123,7 +127,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       unused(max_gain);
       _pq.initialize(_hg.initialNumNodes());
 #endif
-      _flow_execution_policy.initialize(_hg, _context);
+      _rebalancer.initialize();
+      _rebalance_execution_policy.initialize(_hg, _context);
       _is_initialized = true;
     }
     _gain_cache.clear();
@@ -141,14 +146,17 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentUpperBlockWeightBound(_hg, _context);
   }
 
-  HypernodeWeight currentLowerBlockWeightBound() { 
-    return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
+  void performRebalancing(Metrics& best_metrics, std::vector<HypernodeID>& refinement_nodes) {
+    _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
+    size_t iter = 0;
+    while(best_metrics.heaviest_block_weight > currentUpperBlockWeightBound() && iter < _max_rebalance_iter) { //TODO(fritsch) dont recalculate this
+      iter++;
+      _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, best_metrics, refinement_nodes);
+    }
   }
 
   void setStep0Values() {
-    _step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
-    _step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-    _acceptance_policy.init(_step0_smallest_block_weight, _step0_heaviest_block_weight, _total_num_steps, _hg, _context);
+    _acceptance_policy.init(metrics::smallest_block_weight(_hg), metrics::heaviest_block_weight(_hg), _total_num_steps, _hg, _context);
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -165,6 +173,14 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     uint32_t k = _context.partition.k;
     if (_hg.currentNumNodes() - k == 0) {
       return false;
+    }
+
+    if (_rebalance_execution_policy.executeFlow(_hg) && best_metrics.heaviest_block_weight > currentUpperBlockWeightBound()) {
+      //By reordering the first condition a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
+      //This behaviour is currently desired this way
+      DBG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
+      performRebalancing(best_metrics, refinement_nodes);
+      DBG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight << "\n\n";
     }
 
   
@@ -184,7 +200,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     Metrics current_metrics(best_metrics);
     Metrics initial_metrics(current_metrics);
 
-  
     int min_cut_index = -1;
     int touched_hns_since_last_improvement = 0;
     _stopping_policy.resetStatistics();
@@ -192,10 +207,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
     
     const double beta = log(_hg.currentNumNodes());
-
-    if (_flow_execution_policy.executeFlow(_hg) || _current_step <= 1) {
-      FlowBase::init(currentUpperBound, current_metrics.heaviest_block_weight);
-    }
 
     while (!_pq.empty() && !_stopping_policy.searchShouldStop(touched_hns_since_last_improvement,
                                                               _context, beta, best_metrics.km1,
@@ -236,20 +247,21 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       }
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
-      ASSERT(currentUpperBound > FlowBase::idealBlockWeight(), V(currentUpperBound));
       /**
        * Move of vertex v from part p to part q is feasible if:
-       * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
-       * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
+       * no block is emptied              and
+       * km1 improved                     and
+       * no block becomes overloaded      and
+       * no overloaded block is moved to
        */
-      const bool imbalanced_but_improves_balance = current_metrics.heaviest_block_weight > currentUpperBound &&
-                                      FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node);
-      const bool balanced_and_keeps_balance = current_metrics.heaviest_block_weight <= currentUpperBound &&
-                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;      
+      const bool to_block_does_not_become_overloaded = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
-      if ((imbalanced_but_improves_balance || balanced_and_keeps_balance) && !emptying_block) {
+      const bool improved_balance = current_metrics.heaviest_block_weight == _hg.partWeight(_hg.partID(max_gain_node)); //move away from heaviest block
+      const bool improved_km1 = max_gain > 0;
+      const bool improved_balance_less_equal_km1 = improved_balance && current_metrics.km1 <= best_metrics.km1;
+      
+      if (!emptying_block && (improved_km1 || improved_balance_less_equal_km1) && to_block_does_not_become_overloaded) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
-        FlowBase::updateFlow(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],
@@ -266,26 +278,11 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                V(current_metrics.heaviest_block_weight) << V(metrics::heaviest_block_weight(_hg)));
 
         updateNeighbours(max_gain_node, from_part, to_part);
-        /** - indicates best value, C is Cost, km1 in this case. W is weight of the largest subdomain, not imbalance! i indicates the current partition, T is target weight
-         *    C^i < C-
-         * or C^i = C- && W^i < W-
-         * or T <= W^i && W^i < W-
-         */
-        // Differentiate in between 2 modes
-        const bool balancing = current_metrics.heaviest_block_weight > currentUpperBound;
-        const bool refining = !balancing;
 
-        const bool improved_balance = (current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight);
-        const bool improved_km1 = (current_metrics.km1 < best_metrics.km1);
-        const bool improved_balance_within_km1_tolerance = improved_balance 
-              && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
-        // kahypar
-        const bool improved_km1_within_balance = (current_metrics.heaviest_block_weight <= currentUpperBound) &&
-                                                 improved_km1;
-        const bool improved_balance_less_equal_km1 = improved_balance &&
-                                                     (current_metrics.km1 <= best_metrics.km1);
-        if (  (balancing && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_balance_within_km1_tolerance))
-          ||  (refining  && (improved_km1_within_balance || improved_balance_less_equal_km1)) ) { 
+        const bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
+        const bool improved_km1 = max_gain > 0;
+        const bool improved_balance_less_equal_km1 = improved_balance && current_metrics.km1 <= best_metrics.km1;
+        if (improved_km1 || improved_balance_less_equal_km1) { 
           best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
@@ -321,7 +318,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
 
     Base::rollback(_performed_moves.size() - 1, min_cut_index);
     _gain_cache.rollbackDelta();
-    FlowBase::rollbackFlow(_performed_moves.size() - 1, min_cut_index);
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
 
     HEAVY_REFINEMENT_ASSERT(best_metrics.km1 == metrics::km1(_hg));
@@ -1006,15 +1002,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   using Base::_performed_moves;
   using Base::_hns_to_activate;
 
-  using FlowBase::_total_num_steps;
-  using FlowBase::_current_step;
-  using FlowBase::_num_flow_nodes;
-  using FlowBase::_step0_smallest_block_weight;
-  using FlowBase::_step0_heaviest_block_weight;
-  using FlowBase::_step0_imbalance_set;
-  using FlowBase::_flow_execution_policy;
-
-
   ds::SparseMap<PartitionID, Gain> _tmp_gains;
 
   // After a move, we have to update the gains for all adjacent HNs.
@@ -1036,6 +1023,12 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   AcceptancePolicy _acceptance_policy;
+  RebalancerExecution _rebalance_execution_policy;
+  Rebalancer _rebalancer;
+  std::vector<PartitionID> _rebalance_steps;
+  bool _step0_imbalance_set;
+  uint32_t _total_num_steps;
+  uint32_t _current_step;
 
 };
 }  // namespace kahypar

@@ -167,13 +167,6 @@ class InitialPartitionerBase {
             LOG << "kway_fm.";
             break;
           case Objective::km1:
-            if (_context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
-              refiner = (RefinerFactory::getInstance().createObject(
-                         RefinementAlgorithm::flow_balancing_kway_fm_km1,
-                         _hg, _context));
-              LOG << "flow_balancing_kway_fm_km1.";
-              break;
-            }
             refiner = (RefinerFactory::getInstance().createObject(
                          RefinementAlgorithm::kway_fm_km1,
                          _hg, _context));

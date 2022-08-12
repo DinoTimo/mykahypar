@@ -359,6 +359,7 @@ po::options_description createRefinementOptionsDescription(Context& context,
     " - kway_fm_hyperflow_cutter        : k-way FM + HyperFlowCutter              (direct k-way        : cut)\n"
     " - kway_fm_km1                     : k-way FM algorithm                      (direct k-way        : km1)\n"
     " - flow_balancing_kway_fm_km1      : flow-balancing k-way FM algorithm       (direct k-way        : km1)\n"
+    " - rebalancing_kway_fm_km1      : rebalancing k-way FM algorithm       (direct k-way        : km1)\n"
     " - kway_fm_hyperflow_cutter_km1    : k-way FM + HyperFlowCutter              (direct k-way        : km1)\n"
     " - kway_hyperflow_cutter           : k-way HyperFlowCutter                   (direct k-way        : cut & km1)\n"
     )
@@ -409,16 +410,10 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-balance-convergence-speed" : "r-fm-balance-convergence-speed"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_speed : &context.local_search.fm.balance_convergence_speed))->value_name("<double>"),
     "Parameter for how quickly the partition must fulfill the balance constraint")
-    ((initial_partitioning ? "i-r-fm-only-km1-improving" : "r-fm-only-km1-improving"),
-    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.only_km1_improving : &context.local_search.fm.only_km1_improving))->value_name("<bool>"),
-    "Restrict refiner to only make moves that improve km1. A woarsening in balance is prohibited.")
     ((initial_partitioning ? "i-r-fm-km1-increase-tolerance" : "r-fm-km1-increase-tolerance"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.km1_increase_tolerance : &context.local_search.fm.km1_increase_tolerance))->value_name("<double>"),
     "Parameter on how much the km1 goal might be worsenend to ensure balanced solutions")
-    ((initial_partitioning ? "i-r-use-rebalancer" : "r-use-rebalancer"),
-    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.use_rebalancer : &context.local_search.fm.use_rebalancer))->value_name("<bool>"),
-    "Use rebalancer during refinement at levels defined by multilevel flow execution policy.")
-    ((initial_partitioning ? "i-r-fm-balance-convergence-time" : "r-fm-balance-convergence-time"),
+   ((initial_partitioning ? "i-r-fm-balance-convergence-time" : "r-fm-balance-convergence-time"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_time : &context.local_search.fm.balance_convergence_time))->value_name("<double>"),
     "Parameter for after how many steps the partition must fulfill the balance constraint");
   options.add(createFlowRefinementOptionsDescription(context, num_columns, initial_partitioning));

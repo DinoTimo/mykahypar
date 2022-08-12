@@ -40,6 +40,7 @@
 #include "kahypar/partition/refinement/kway_fm_cut_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_km1_refiner.h"
 #include "kahypar/partition/refinement/upper_bound_flow_balancing_refiner.h"
+#include "kahypar/partition/refinement/rebalancing_refiner.h"
 #include "kahypar/partition/refinement/policies/fm_stop_policy.h"
 #include "kahypar/partition/refinement/policies/fm_acceptance_policy.h"
 #include "kahypar/partition/bin_packing/i_bin_packer.h"
@@ -89,6 +90,10 @@ using KWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<KWayKMin
                                                                         meta::Typelist<StoppingPolicyClasses> >;
 
 using FlowBalancingKWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<UpperBoundKwayKMinusOneRefiner,
+                                                                        IRefiner,
+                                                                        FlowRefiningPolicies>;
+
+using RebalancingKWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<RebalancingKwayKMinusOneRefiner,
                                                                         IRefiner,
                                                                         FlowRefiningPolicies>;
 

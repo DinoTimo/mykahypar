@@ -75,6 +75,14 @@ REGISTER_DISPATCHED_REFINER(RefinementAlgorithm::flow_balancing_kway_fm_km1,
                               context.local_search.flow.execution_policy),
                             meta::PolicyRegistry<AcceptanceRule>::getInstance().getPolicy(
                               context.local_search.flow.acceptance_policy));
+REGISTER_DISPATCHED_REFINER(RefinementAlgorithm::rebalancing_kway_fm_km1,
+                            RebalancingKWayKMinusOneFactoryDispatcher,
+                            meta::PolicyRegistry<RefinementStoppingRule>::getInstance().getPolicy(
+                              context.local_search.fm.stopping_rule),
+                            meta::PolicyRegistry<FlowExecutionMode>::getInstance().getPolicy(
+                              context.local_search.flow.execution_policy),
+                            meta::PolicyRegistry<AcceptanceRule>::getInstance().getPolicy(
+                              context.local_search.flow.acceptance_policy));
 REGISTER_DISPATCHED_REFINER(RefinementAlgorithm::kway_fm_km1,
                             KWayKMinusOneFactoryDispatcher,
                             meta::PolicyRegistry<RefinementStoppingRule>::getInstance().getPolicy(
