@@ -15,6 +15,7 @@
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/move.h"
 #include "kahypar/partition/metrics.h"
+#include "kahypar/utils/randomize.h"
 
 namespace kahypar {
 
@@ -139,7 +140,7 @@ class Rebalancer {
             continue;
           }
           NodeMove move = nodeMoveFromInt(_queues[block].max());
-          ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)));
+          ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)) << V(move.node));
           if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound
           || gainChangedFor(move.node, move.to_part))  {
             if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound) {
@@ -266,12 +267,20 @@ class Rebalancer {
           continue;
         }
         Gain newGain = gainInducedByHypergraph(node, to_part);
-        if (newGain > max_gain || !foundAnyMove) {
+        if (!foundAnyMove) {
           max_gain = newGain;
           max_to_part = to_part;
           foundAnyMove = true;
+        } else if (newGain == max_gain) {
+          bool coin = Randomize::instance().flipCoin();
+          if (coin) {
+            max_gain = newGain;
+            max_to_part = to_part;
+          }
+        } else if (newGain > max_gain) {
+          max_gain = newGain;
+          max_to_part = to_part;
         }
-        //TODO(fritsch) tiebreaker if newGain == max_gain?
       }
       ASSERT((max_to_part == _invalid_part) == (max_gain == _invalid_gain));
       ASSERT((max_to_part < k || max_to_part == _invalid_part) && max_to_part != from_part);
