@@ -489,12 +489,16 @@ class BinaryMinMaxHeap final {
     IDType id = _max_heap.top();
     _max_heap.pop();
     _min_heap.remove(id);
+    ASSERT(!_max_heap.contains(id));
+    ASSERT(!_min_heap.contains(id));
   }
 
   inline void popMin() {
     IDType id = _min_heap.top();
     _min_heap.pop();
     _max_heap.remove(id);
+    ASSERT(!_max_heap.contains(id));
+    ASSERT(!_min_heap.contains(id));
   }
 
   inline const IDType & max() const {

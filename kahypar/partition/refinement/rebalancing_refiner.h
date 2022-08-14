@@ -168,6 +168,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     if (!_step0_imbalance_set) {
       _step0_imbalance_set = true;
       setStep0Values();
+      //TODO(fritsch) print current nodes to check for determinism of contraction
     }
     //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
     uint32_t k = _context.partition.k;
@@ -258,7 +259,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
       const bool improved_balance = current_metrics.heaviest_block_weight == _hg.partWeight(_hg.partID(max_gain_node)); //move away from heaviest block
       const bool improved_km1 = max_gain > 0;
-      const bool improved_balance_less_equal_km1 = improved_balance && current_metrics.km1 <= best_metrics.km1;
+      const bool improved_balance_less_equal_km1 = improved_balance && max_gain == 0;
       
       if (!emptying_block && (improved_km1 || improved_balance_less_equal_km1) && to_block_does_not_become_overloaded) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
