@@ -79,7 +79,7 @@ class BalanceApproachingAcceptancePolicy : public FlowAcceptancePolicy {
       double modifier = std::pow(initialImbalance / initialPureUpper, exponent);
       double returnValue = (_ideal_block_weight + blockWeightDelta(context, current_step)) * modifier;
       ASSERT(returnValue > _ideal_block_weight, V(returnValue) << ", " << V(_ideal_block_weight));
-      return static_cast<HypernodeWeight>(returnValue);
+      return std::max(_final_block_weight, static_cast<HypernodeWeight>(returnValue));
     }
 
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
@@ -125,7 +125,7 @@ class ImbalanceHoldingAcceptancePolicy : public FlowAcceptancePolicy {
       double tan = arctan(b * (x - c));
       double value = a * tan + d;
       ASSERT(value >= _final_block_weight, V(value));
-      return std::max(value, -1.0);
+      return std::max(static_cast<double>(_final_block_weight), std::max(value, -1.0));
     }
     
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
@@ -166,7 +166,7 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
       if (current_step < 50) { //TODO(fritsch) magic number
         return _balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context);
       }
-      return std::max(round(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), context.local_search.flow.rounding_zeta), _final_block_weight);
+      return std::max(_final_block_weight, std::max(round(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), context.local_search.flow.rounding_zeta), _final_block_weight));
     }
     
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
@@ -190,8 +190,8 @@ class HeaviestNodePolicy : public FlowAcceptancePolicy {
 
     //TODO(fritsch) heaviest node weight is already maintained in coarsener base and calculated again
     HypernodeWeight currentUpperBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      return std::max((1.0 + context.partition.epsilon) * static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k),
-                                                    hypergraph.weightOfHeaviestNode() + static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k));
+      return std::max(static_cast<double>(_final_block_weight), std::max((1.0 + context.partition.epsilon) * static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k),
+                                                    hypergraph.weightOfHeaviestNode() + static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k)));
     }
 
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
