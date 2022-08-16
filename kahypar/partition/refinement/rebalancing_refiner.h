@@ -176,8 +176,8 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       return false;
     }
 
-    if (_rebalance_execution_policy.executeFlow(_hg) && best_metrics.heaviest_block_weight > currentUpperBlockWeightBound()) {
-      //By reordering the first condition a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
+    if (best_metrics.heaviest_block_weight > currentUpperBlockWeightBound() && _rebalance_execution_policy.executeFlow(_hg)) {
+      //By reordering the arguemnts a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
       //This behaviour is currently desired this way
       DBG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
       performRebalancing(best_metrics, refinement_nodes);

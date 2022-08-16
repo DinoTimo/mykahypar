@@ -216,7 +216,9 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     if (model != BalancingFlowModel::UNDEFINED) {
       std::stringstream s;
       s << model;
-      infos.push_back("flow_model = " + s.str());
+      if (_context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
+        infos.push_back("flow_model = " + s.str());
+      }
       std::stringstream s2;
       s2 << _context.local_search.flow.acceptance_policy;
       infos.push_back("upper bound = " + s2.str());
