@@ -90,7 +90,13 @@ class BinPackingInitialPartitioner : public IInitialPartitioner,
     const PartitionID rb_range_k = _context.partition.rb_upper_k - _context.partition.rb_lower_k + 1;
     ASSERT(rb_range_k > 1, V(_context.partition.rb_upper_k) << ", " << V(_context.partition.rb_lower_k));
     std::vector<HypernodeWeight> max_bin_weights;
-    if (_context.partition.use_individual_part_weights) {
+    if (_context.initial_partitioning.use_modified_epsilon) {
+      //it must hold:  (1+e')avg = max((1+e)avg, avg+max) 
+      double avg = ceil(static_cast<double>(_hg.totalWeight()) / rb_range_k);
+      double onePlusModifiedEpsilon = std::max((1.0 + _context.partition.epsilon) * avg, avg + _hg.weightOfHeaviestNode()) / avg;
+      max_bin_weights = std::vector<HypernodeWeight>(rb_range_k, onePlusModifiedEpsilon * ceil(static_cast<double>(_hg.totalWeight()) / rb_range_k));  
+      DBG1 << "use modified epsilon " <<  _context.initial_partitioning.use_modified_epsilon << " and e' is " << (onePlusModifiedEpsilon - 1.0);
+    } else if (_context.partition.use_individual_part_weights) {
       max_bin_weights = _context.partition.max_bins_for_individual_part_weights;
     } else {
       max_bin_weights = std::vector<HypernodeWeight>(rb_range_k, (1.0 + _context.partition.epsilon) * ceil(static_cast<double>(_hg.totalWeight()) / rb_range_k));
