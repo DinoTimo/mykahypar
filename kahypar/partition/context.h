@@ -196,6 +196,7 @@ struct LocalSearchParameters {
     double km1_increase_tolerance = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
+    bool use_standard_deviation = false;
   };
 
   struct Flow {
@@ -251,6 +252,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;
     if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {    
       str << "    km1 increase tolerance:           " << params.fm.km1_increase_tolerance << std::endl;
+      str << "    use standard deviation:           " << params.fm.use_standard_deviation << std::endl;
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
     }
   }

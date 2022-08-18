@@ -256,6 +256,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+        current_metrics.standard_deviation = metrics::standard_deviation(_hg);
 
         current_metrics.km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -274,16 +275,15 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         // Differentiate in between 2 modes
         const bool balancing = current_metrics.heaviest_block_weight > currentUpperBound;
         const bool refining = !balancing;
-
-        const bool improved_balance = (current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight);
-        const bool improved_km1 = (current_metrics.km1 < best_metrics.km1);
-        const bool improved_balance_within_km1_tolerance = improved_balance 
-              && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
+        bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
+        if (_context.local_search.fm.use_standard_deviation && balancing) {
+          improved_balance = improved_balance || ((current_metrics.heaviest_block_weight == best_metrics.heaviest_block_weight) && (current_metrics.standard_deviation < best_metrics.standard_deviation));
+        }
+        const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
+        const bool improved_balance_within_km1_tolerance = improved_balance && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
         // kahypar
-        const bool improved_km1_within_balance = (current_metrics.heaviest_block_weight <= currentUpperBound) &&
-                                                 improved_km1;
-        const bool improved_balance_less_equal_km1 = improved_balance &&
-                                                     (current_metrics.km1 <= best_metrics.km1);
+        const bool improved_balance_less_equal_km1  = improved_balance && current_metrics.km1 <= best_metrics.km1;
+        const bool improved_km1_within_balance      = improved_km1     && current_metrics.heaviest_block_weight <= currentUpperBound;
         if (  (balancing && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_balance_within_km1_tolerance))
           ||  (refining  && (improved_km1_within_balance || improved_balance_less_equal_km1)) ) { 
           best_metrics = current_metrics;

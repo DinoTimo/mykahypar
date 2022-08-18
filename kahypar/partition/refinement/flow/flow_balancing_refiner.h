@@ -99,12 +99,13 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
       _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
       _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
+      //The values on the main diagonale are only really used for assertions
       _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(hn); 
       _flow_matrix[to_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
       }
     }
 
-    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part, bool undo) {
+    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part, bool undo) { //TODO(fritsch) this is ugly but not a big problem
       if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
       _flow_vector[from_part] -= _hg.nodeWeight(hn);
       _flow_vector[to_part] += _hg.nodeWeight(hn);
