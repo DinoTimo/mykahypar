@@ -43,7 +43,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _quotient_edge_capacities(context.partition.k * context.partition.k, 0),
-      _vertex_block_pair_bitvector(hypergraph.initialNumNodes() * context.partition.k, false),
       _adjacency_bitmap(context.partition.k * (context.partition.k - 1), 0),
       _degree_vector(context.partition.k, 0),
       _laplace_matrix(context.partition.k * context.partition.k, 0),
@@ -148,7 +147,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     }
 
     void initQuotientEdgeCapacities() {
-      std::fill(_vertex_block_pair_bitvector.begin(), _vertex_block_pair_bitvector.end(), false);
+      std::vector<bool> vertex_block_pair_bitvector(_hg.initialNumNodes() * _context.partition.k, false);
       std::fill(_quotient_edge_capacities.begin(), _quotient_edge_capacities.end(), 0);
       for (HyperedgeID edge : _hg.edges()) {
         if (_hg.connectivitySet(edge).size() <= 1) {
@@ -156,9 +155,9 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         }
         for (HypernodeID pin : _hg.pins(edge)) {
           for (PartitionID block : _hg.connectivitySet(edge)) {
-            if (!_vertex_block_pair_bitvector[pin * _context.partition.k + block]) {
+            if (!vertex_block_pair_bitvector[pin * _context.partition.k + block]) {
               _quotient_edge_capacities[_hg.partID(pin) * _context.partition.k + block] += _hg.nodeWeight(pin);
-              _vertex_block_pair_bitvector[pin * _context.partition.k + block] = true;
+              vertex_block_pair_bitvector[pin * _context.partition.k + block] = true;
             }
           }
         }
@@ -252,7 +251,6 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     std::vector<HypernodeWeight> _flow_matrix;
     std::vector<HypernodeWeight> _capacity_matrix;
     std::vector<HypernodeWeight> _quotient_edge_capacities;
-    std::vector<bool> _vertex_block_pair_bitvector;
     std::vector<bool> _adjacency_bitmap;
     std::vector<HypernodeWeight> _degree_vector;
     std::vector<HypernodeWeight> _laplace_matrix;
