@@ -72,7 +72,6 @@ class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solv
       full_square_matrix<double> U(A);
       for (size_t i = 0; i < N - 1; i++) {
         for (size_t k = i + 1; k < N; k++) {
-          ASSERT(U.at(i, i) > 0.0001 || U.at(i, i) < -0.0001);
           L.at(k, i) = U.at(k, i) / U.at(i, i);
           for (size_t j = i; j < N; j++ ) {
             U.at(k, j) -= L.at(k, i) * U.at(i, j);

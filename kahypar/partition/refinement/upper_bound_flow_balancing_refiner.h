@@ -241,13 +241,10 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
-       */
-      const bool imbalanced_but_improves_balance = current_metrics.heaviest_block_weight > currentUpperBound &&
-                                      FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node);
-      const bool balanced_and_keeps_balance = current_metrics.heaviest_block_weight <= currentUpperBound &&
-                    _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;      
+       */      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
-      if ((imbalanced_but_improves_balance || balanced_and_keeps_balance) && !emptying_block) {
+      const bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound; 
+      if (!emptying_block && dont_overload_to_part && FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node)) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         FlowBase::updateFlow(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
