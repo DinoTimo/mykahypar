@@ -146,9 +146,9 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   }
 
   void setStep0Values() {
-    _step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
-    _step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-    _acceptance_policy.init(_step0_smallest_block_weight, _step0_heaviest_block_weight, _total_num_steps, _hg, _context);
+    HypernodeWeight step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
+    HypernodeWeight step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+    _acceptance_policy.init(step0_smallest_block_weight, step0_heaviest_block_weight, _total_num_steps, _hg, _context);
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -1006,8 +1006,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   using FlowBase::_total_num_steps;
   using FlowBase::_current_step;
   using FlowBase::_num_flow_nodes;
-  using FlowBase::_step0_smallest_block_weight;
-  using FlowBase::_step0_heaviest_block_weight;
   using FlowBase::_step0_imbalance_set;
   using FlowBase::_flow_execution_policy;
 
