@@ -126,6 +126,10 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << " louvain_edge_weight=" << context.preprocessing.community_detection.edge_weight
       << " reuse_community_structure=" << std::boolalpha
       << context.preprocessing.community_detection.reuse_communities
+      << " contract_communities="
+      << context.coarsening.rating.contract_communities
+      << " ignore_max_node_weight="
+      << context.coarsening.rating.ignore_max_node_weight
       << " coarsening_algo=" << context.coarsening.algorithm
       << " coarsening_max_allowed_weight_multiplier="
       << context.coarsening.max_allowed_weight_multiplier
@@ -156,6 +160,8 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << context.initial_partitioning.coarsening.max_allowed_weight_multiplier
       << " IP_coarsening_contraction_limit_multiplier="
       << context.initial_partitioning.coarsening.contraction_limit_multiplier
+      << " IP_coarsening_use_modified_epsilon="
+      << context.initial_partitioning.use_modified_epsilon
       << " IP_coarsening_rating_function="
       << context.initial_partitioning.coarsening.rating.rating_function
       << " IP_coarsening_rating_use_communities="
@@ -184,12 +190,39 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << " local_search_iterations_per_level=" << context.local_search.iterations_per_level;
   if (context.local_search.algorithm == RefinementAlgorithm::twoway_fm ||
       context.local_search.algorithm == RefinementAlgorithm::kway_fm ||
-      context.local_search.algorithm == RefinementAlgorithm::kway_fm_km1) {
+      context.local_search.algorithm == RefinementAlgorithm::kway_fm_km1 ||
+      context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
+      context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
     oss << " local_search_fm_stopping_rule=" << context.local_search.fm.stopping_rule
         << " local_search_fm_max_number_of_fruitless_moves="
         << context.local_search.fm.max_number_of_fruitless_moves
         << " local_search_fm_adaptive_stopping_alpha="
         << context.local_search.fm.adaptive_stopping_alpha;
+  }
+
+ /*
+r-flow-execution-policy=constant
+beta*/
+  if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
+      context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
+    oss << " balance_convergence_speed=" << context.local_search.fm.balance_convergence_speed
+        << " balance_convergence_time=" << context.local_search.fm.balance_convergence_time
+        << " acceptance_policy=" << context.local_search.flow.acceptance_policy;
+    if (context.local_search.flow.acceptance_policy == AcceptanceRule::staircase) {
+      oss << " rounding_zeta=" << context.local_search.flow.rounding_zeta;
+    }
+    oss << " flow_execution_policy=" << context.local_search.flow.execution_policy;
+    if (context.local_search.flow.execution_policy == FlowExecutionMode::constant) {
+      oss << " flow_beta=" << context.local_search.flow.beta; 
+    }
+  }
+  if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
+    oss << " km1_increase_tolerance=" << context.local_search.fm.km1_increase_tolerance
+        << " flow_model=" << context.local_search.fm.flow_model
+        << " use_standard_deviation=" << context.local_search.fm.use_standard_deviation;
+  }
+  if (context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
+    oss << " rebalancer_type=" << context.local_search.fm.rebalancing_order_policy;
   }
   oss << " iteration=" << iteration;
   for (PartitionID i = 0; i != hypergraph.k(); ++i) {
