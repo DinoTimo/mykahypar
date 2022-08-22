@@ -215,9 +215,13 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     BalancingFlowModel model = _context.local_search.fm.flow_model;
     if (model != BalancingFlowModel::UNDEFINED) {
       std::stringstream s;
-      s << model;
       if (_context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
+        s << model;
         infos.push_back("flow_model = " + s.str());
+      }
+      if (_context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
+        s << _context.local_search.fm.rebalancing_order_policy;
+        infos.push_back("rebalancing order = " + s.str());
       }
       std::stringstream s2;
       s2 << _context.local_search.flow.acceptance_policy;

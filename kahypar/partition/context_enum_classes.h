@@ -158,6 +158,13 @@ enum class BalancingFlowModel : uint8_t {
   UNDEFINED
 };
 
+enum class RebalancerType : uint8_t {
+  round_robin,
+  reverse_topological,
+  do_nothing,
+  UNDEFINED
+};
+
 enum class Objective : uint8_t {
   cut,
   km1,
@@ -471,6 +478,17 @@ static std::ostream& operator<< (std::ostream& os, const BalancingFlowModel& mod
   return os << static_cast<uint8_t>(model);
 }
 
+static std::ostream& operator<< (std::ostream& os, const RebalancerType& order) {
+  switch (order) {
+    case RebalancerType::reverse_topological : return os << "reverse_topological";
+    case RebalancerType::round_robin : return os << "round_robin";
+    case RebalancerType::do_nothing : return os << "do_nothing";
+    case RebalancerType::UNDEFINED: return os << "UNDEFINED";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(order);
+}
+
 static std::ostream& operator<< (std::ostream& os, const FlowExecutionMode& mode) {
   switch (mode) {
     case FlowExecutionMode::constant: return os << "constant";
@@ -633,6 +651,19 @@ static BalancingFlowModel balancingFlowModelFromString(const std::string& model)
   LOG << "No valid flow model for flow balancing.";
   exit(0);
   return BalancingFlowModel::UNDEFINED;
+}
+
+static RebalancerType rebalancerTypeFromString(const std::string& order) {
+  if (order == "reverse_topological") {
+    return RebalancerType::reverse_topological;
+  } else if (order == "round_robin") {
+    return RebalancerType::round_robin;
+  } else if (order == "do_nothing") {
+    return RebalancerType::do_nothing;
+  }
+  LOG << "No valid rebalancing order policy.";
+  exit(0);
+  return RebalancerType::UNDEFINED;
 }
 
 static CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type) {

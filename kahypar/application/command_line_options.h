@@ -400,6 +400,16 @@ po::options_description createRefinementOptionsDescription(Context& context,
       }
     }),
     "Balancing flow for refinement")
+    ((initial_partitioning ? "i-r-fm-rebalancer-type" : "r-fm-rebalancer-type"),
+    po::value<std::string>()->value_name("<string>")->notifier(
+      [&context, initial_partitioning](const std::string& order_policy) {
+      if (initial_partitioning) {
+        context.initial_partitioning.local_search.fm.rebalancing_order_policy = kahypar::rebalancerTypeFromString(order_policy);
+      } else {
+        context.local_search.fm.rebalancing_order_policy = kahypar::rebalancerTypeFromString(order_policy);
+      }
+    }),
+    "Type of rebalancer used with rebalancing refiner")
     ((initial_partitioning ? "i-r-fm-stop-i" : "r-fm-stop-i"),
     po::value<uint32_t>((initial_partitioning ? &context.initial_partitioning.local_search.fm.max_number_of_fruitless_moves : &context.local_search.fm.max_number_of_fruitless_moves))->value_name("<uint32_t>"),
     "Max. # fruitless moves before stopping local search using simple stopping rule")

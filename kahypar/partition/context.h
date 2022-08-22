@@ -197,6 +197,7 @@ struct LocalSearchParameters {
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
     bool use_standard_deviation = false;
+    RebalancerType rebalancing_order_policy = RebalancerType::UNDEFINED; 
   };
 
   struct Flow {
@@ -255,6 +256,10 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
       str << "    use standard deviation:           " << params.fm.use_standard_deviation << std::endl;
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
     }
+    if (params.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {    
+      str << "    rebalancing order policy:         " << params.fm.rebalancing_order_policy << std::endl;
+    }
+
   }
 
   if (params.algorithm == RefinementAlgorithm::twoway_fm ||
