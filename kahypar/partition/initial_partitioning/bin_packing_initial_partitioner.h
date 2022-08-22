@@ -95,7 +95,7 @@ class BinPackingInitialPartitioner : public IInitialPartitioner,
       double avg = ceil(static_cast<double>(_hg.totalWeight()) / rb_range_k);
       double onePlusModifiedEpsilon = std::max((1.0 + _context.partition.epsilon) * avg, avg + _hg.weightOfHeaviestNode()) / avg;
       max_bin_weights = std::vector<HypernodeWeight>(rb_range_k, onePlusModifiedEpsilon * ceil(static_cast<double>(_hg.totalWeight()) / rb_range_k));  
-      DBG1 << "use modified epsilon " <<  _context.initial_partitioning.use_modified_epsilon << " and e' is " << (onePlusModifiedEpsilon - 1.0);
+      DBG0 << "use modified epsilon " <<  _context.initial_partitioning.use_modified_epsilon << " and e' is " << (onePlusModifiedEpsilon - 1.0);
     } else if (_context.partition.use_individual_part_weights) {
       max_bin_weights = _context.partition.max_bins_for_individual_part_weights;
     } else {
