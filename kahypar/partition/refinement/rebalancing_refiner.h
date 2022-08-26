@@ -250,18 +250,13 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       ++touched_hns_since_last_improvement;
       /**
        * Move of vertex v from part p to part q is feasible if:
-       * no block is emptied              and
-       * km1 improved                     and
-       * no block becomes overloaded      and
-       * no overloaded block is moved to
+       * p is not emptied                               and
+       * km1 improved || balance improved, km1 equal    and
+       * q does not become overloaded
        */
       const bool to_block_does_not_become_overloaded = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
-      const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
-      const bool improved_balance = current_metrics.heaviest_block_weight == _hg.partWeight(_hg.partID(max_gain_node)); //move away from heaviest block
-      const bool improved_km1 = max_gain > 0;
-      const bool improved_balance_less_equal_km1 = improved_balance && max_gain == 0;
-      
-      if (!emptying_block && (improved_km1 || improved_balance_less_equal_km1) && to_block_does_not_become_overloaded) {
+      const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node); 
+      if (!emptying_block && to_block_does_not_become_overloaded) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
                                 to_part,
@@ -281,7 +276,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
         updateNeighbours(max_gain_node, from_part, to_part);
 
         const bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
-        const bool improved_km1 = max_gain > 0;
+        const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
         const bool improved_balance_less_equal_km1 = improved_balance && current_metrics.km1 <= best_metrics.km1;
         if (improved_km1 || improved_balance_less_equal_km1) { 
           best_metrics = current_metrics;
