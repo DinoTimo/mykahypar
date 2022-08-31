@@ -141,7 +141,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentUpperBlockWeightBound(_hg, _context);
   }
 
-  HypernodeWeight currentLowerBlockWeightBound() { 
+  HypernodeWeight currentLowerBlockWeightBound() override { 
     return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
   }
 
@@ -189,7 +189,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     int touched_hns_since_last_improvement = 0;
     _stopping_policy.resetStatistics();
 
-    HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
+    const HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
+    const HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
     
     const double beta = log(_hg.currentNumNodes());
 
@@ -236,14 +237,18 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       }
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
-      ASSERT(currentUpperBound > FlowBase::idealBlockWeight(), V(currentUpperBound));
+      ASSERT(currentUpperBound >= FlowBase::idealBlockWeight(), V(currentUpperBound));
+      ASSERT(currentLowerBound <= FlowBase::idealBlockWeight(), V(currentLowerBound));
       /**
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or
        * ( heaviest domain weight < target weight && weight(q) + weight(v) <= target weight )
        */      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
-      const bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound; 
+      bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
+      if (_context.local_search.fm.use_lower_bound) {
+          dont_overload_to_part = dont_overload_to_part && (_hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound);
+      }
       if (!emptying_block && dont_overload_to_part && FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node)) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         FlowBase::updateFlow(max_gain_node, from_part, to_part);
@@ -253,8 +258,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-        current_metrics.standard_deviation = metrics::standard_deviation(_hg);
-
+        current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg);
+        
         current_metrics.km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
 
@@ -270,17 +275,22 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
          * or T <= W^i && W^i < W-
          */
         // Differentiate in between 2 modes
-        const bool balancing = current_metrics.heaviest_block_weight > currentUpperBound;
+        bool imbalanced = current_metrics.heaviest_block_weight > currentUpperBound; 
+        if (_context.local_search.fm.use_lower_bound) {
+          imbalanced = imbalanced || (current_metrics.smallest_block_weight < currentLowerBound);
+        }
+        const bool balancing = imbalanced;
         const bool refining = !balancing;
         bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
-        if (_context.local_search.fm.use_standard_deviation && balancing) {
-          improved_balance = improved_balance || ((current_metrics.heaviest_block_weight == best_metrics.heaviest_block_weight) && (current_metrics.standard_deviation < best_metrics.standard_deviation));
+        if (_context.local_search.fm.use_lower_bound) {
+          improved_balance =                                            (improved_balance && current_metrics.smallest_block_weight >= best_metrics.smallest_block_weight)
+          || (current_metrics.heaviest_block_weight == best_metrics.heaviest_block_weight && current_metrics.smallest_block_weight >  best_metrics.smallest_block_weight);
         }
         const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
         const bool improved_balance_within_km1_tolerance = improved_balance && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
         // kahypar
         const bool improved_balance_less_equal_km1  = improved_balance && current_metrics.km1 <= best_metrics.km1;
-        const bool improved_km1_within_balance      = improved_km1     && current_metrics.heaviest_block_weight <= currentUpperBound;
+        const bool improved_km1_within_balance      = improved_km1     && !imbalanced;
         if (  (balancing && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_balance_within_km1_tolerance))
           ||  (refining  && (improved_km1_within_balance || improved_balance_less_equal_km1)) ) { 
           best_metrics = current_metrics;

@@ -146,6 +146,10 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentUpperBlockWeightBound(_hg, _context);
   }
 
+    HypernodeWeight currentLowerBlockWeightBound() override {
+    return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
+  }
+
   void performRebalancing(Metrics& best_metrics, std::vector<HypernodeID>& refinement_nodes) {
     _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
     size_t iter = 0;
@@ -254,9 +258,12 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
        * km1 improved || balance improved, km1 equal    and
        * q does not become overloaded
        */
-      const bool to_block_does_not_become_overloaded = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
+      bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
+      if (_context.local_search.fm.use_lower_bound) {
+          dont_overload_to_part = dont_overload_to_part && (_hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound());
+      }
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node); 
-      if (!emptying_block && to_block_does_not_become_overloaded) {
+      if (!emptying_block && dont_overload_to_part) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         Base::updatePQpartState(from_part,
                                 to_part,
@@ -264,6 +271,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
                                 _context.partition.max_part_weights[to_part]);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
+        current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg);
 
         current_metrics.km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
@@ -275,7 +283,12 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
 
         updateNeighbours(max_gain_node, from_part, to_part);
 
-        const bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
+        bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
+        if (_context.local_search.fm.use_lower_bound) {
+          improved_balance =                                            (improved_balance && current_metrics.smallest_block_weight >= best_metrics.smallest_block_weight)
+          || (current_metrics.heaviest_block_weight == best_metrics.heaviest_block_weight && current_metrics.smallest_block_weight >  best_metrics.smallest_block_weight);
+        }
+        
         const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
         const bool improved_balance_less_equal_km1 = improved_balance && current_metrics.km1 <= best_metrics.km1;
         if (improved_km1 || improved_balance_less_equal_km1) { 

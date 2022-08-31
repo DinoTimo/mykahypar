@@ -200,9 +200,6 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
         << context.local_search.fm.adaptive_stopping_alpha;
   }
 
- /*
-r-flow-execution-policy=constant
-beta*/
   if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
       context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
     oss << " balance_convergence_speed=" << context.local_search.fm.balance_convergence_speed
@@ -210,6 +207,10 @@ beta*/
         << " acceptance_policy=" << context.local_search.flow.acceptance_policy;
     if (context.local_search.flow.acceptance_policy == AcceptanceRule::staircase) {
       oss << " rounding_zeta=" << context.local_search.flow.rounding_zeta;
+    }
+    oss << " use_lower_bound=" << context.local_search.fm.use_lower_bound;
+    if (context.local_search.fm.use_lower_bound) {
+      oss << " lower_bound_multiplier=" << context.local_search.fm.lower_bound_multiplier;
     }
     oss << " flow_execution_policy=" << context.local_search.flow.execution_policy;
     if (context.local_search.flow.execution_policy == FlowExecutionMode::constant) {
@@ -219,7 +220,7 @@ beta*/
   if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
     oss << " km1_increase_tolerance=" << context.local_search.fm.km1_increase_tolerance
         << " flow_model=" << context.local_search.fm.flow_model
-        << " use_standard_deviation=" << context.local_search.fm.use_standard_deviation;
+        << " use_lower_bound=" << context.local_search.fm.use_lower_bound;
   }
   if (context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
     oss << " rebalancer_type=" << context.local_search.fm.rebalancing_order_policy;

@@ -32,8 +32,8 @@ def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfi
   if (num <= 0) : return
   targets = readLines(targetpath)
   if (len(targets) > 0): 
+    plt.plot(range(num), floatify(targets), 'r', label=targetlabel)
     if showfinal:
-      plt.plot(range(num), floatify(targets), 'r', label=targetlabel)
       plt.hlines(y=float(targets[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='g', label='final target weight')
   plt.plot(range(num), floatify(actuals), 'b', label=actuallabel)
 

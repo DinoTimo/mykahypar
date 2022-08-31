@@ -423,9 +423,12 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-km1-increase-tolerance" : "r-fm-km1-increase-tolerance"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.km1_increase_tolerance : &context.local_search.fm.km1_increase_tolerance))->value_name("<double>"),
     "Parameter on how much the km1 goal might be worsenend to ensure balanced solutions")
-   ((initial_partitioning ? "i-r-fm-use-standard-deviation" : "r-fm-use-standard-deviation"),
-    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.use_standard_deviation : &context.local_search.fm.use_standard_deviation))->value_name("<bool>"),
-    "Parameter if standard deviation is used as a metrics during fm")
+   ((initial_partitioning ? "i-r-fm-use-lower-bound" : "r-fm-use-lower-bound"),
+    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.use_lower_bound : &context.local_search.fm.use_lower_bound))->value_name("<bool>"),
+    "Parameter deciding if a lower bound is used during fm")
+   ((initial_partitioning ? "i-r-fm-lower-bound-multiplier" : "r-fm-lower-bound-multiplier"),
+    po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.lower_bound_multiplier : &context.local_search.fm.lower_bound_multiplier))->value_name("<double>"),
+    "Parameter defining the final lower bound")
    ((initial_partitioning ? "i-r-fm-balance-convergence-time" : "r-fm-balance-convergence-time"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_time : &context.local_search.fm.balance_convergence_time))->value_name("<double>"),
     "Parameter for after how many steps the partition must fulfill the balance constraint");
