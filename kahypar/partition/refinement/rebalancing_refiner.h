@@ -98,9 +98,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     _rebalance_execution_policy(),
     _rebalancer(hypergraph, context),
     _rebalance_steps(),
-    _step0_imbalance_set(false),
-    _total_num_steps(hypergraph.initialNumNodes() - context.partition.k),
-    _current_step(0) { }
+    _step0_imbalance_set(false) { }
 
   ~RebalancingKwayKMinusOneRefiner() override {
     if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1 || _context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
@@ -160,7 +158,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   }
 
   void setStep0Values() {
-    _acceptance_policy.init(metrics::smallest_block_weight(_hg), metrics::heaviest_block_weight(_hg), _total_num_steps, _hg, _context);
+    _acceptance_policy.init(metrics::smallest_block_weight(_hg), metrics::heaviest_block_weight(_hg), _hg.currentNumNodes(), _hg, _context);
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -172,9 +170,8 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     if (!_step0_imbalance_set) {
       _step0_imbalance_set = true;
       setStep0Values();
-      //TODO(fritsch) print current nodes to check for determinism of contraction
     }
-    //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
+    //save some runtime by skipping the first step if every block has one node. When every block has exactly 1 node, no move is allowed anyways.
     uint32_t k = _context.partition.k;
     if (_hg.currentNumNodes() - k == 0) {
       return false;
@@ -199,8 +196,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     // Activate all adjacent free vertices of a fixed vertex in refinement_nodes
     Base::activateAdjacentFreeVertices(refinement_nodes);
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
-
-    _current_step = _hg.currentNumNodes() - k;
 
     Metrics current_metrics(best_metrics);
     Metrics initial_metrics(current_metrics);
@@ -1036,8 +1031,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   Rebalancer _rebalancer;
   std::vector<PartitionID> _rebalance_steps;
   bool _step0_imbalance_set;
-  uint32_t _total_num_steps;
-  uint32_t _current_step;
 
 };
 }  // namespace kahypar

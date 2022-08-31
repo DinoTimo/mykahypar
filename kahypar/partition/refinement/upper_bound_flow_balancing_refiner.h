@@ -148,7 +148,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   void setStep0Values() {
     HypernodeWeight step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
     HypernodeWeight step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-    _acceptance_policy.init(step0_smallest_block_weight, step0_heaviest_block_weight, _total_num_steps, _hg, _context);
+    _acceptance_policy.init(step0_smallest_block_weight, step0_heaviest_block_weight, _hg.currentNumNodes(), _hg, _context);
   }
 
   bool refineImpl(std::vector<HypernodeID>& refinement_nodes,
@@ -161,12 +161,11 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _step0_imbalance_set = true;
       setStep0Values();
     }
-    //save some runtime by skipping the first step. Since every block has exactly 1 node, no move is allowed anyways.
+    //save some runtime by skipping the first step if every block has one node. When every block has exactly 1 node, no move is allowed anyways.
     uint32_t k = _context.partition.k;
     if (_hg.currentNumNodes() - k == 0) {
       return false;
     }
-
   
     Base::reset();
     _unremovable_he_parts.reset();
@@ -178,8 +177,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     // Activate all adjacent free vertices of a fixed vertex in refinement_nodes
     Base::activateAdjacentFreeVertices(refinement_nodes);
     ASSERT_THAT_GAIN_CACHE_IS_VALID();
-
-    _current_step = _hg.currentNumNodes() - k;
 
     Metrics current_metrics(best_metrics);
     Metrics initial_metrics(current_metrics);
@@ -194,7 +191,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     
     const double beta = log(_hg.currentNumNodes());
 
-    if (_flow_execution_policy.executeFlow(_hg) || _current_step <= 1) {
+    if (_flow_execution_policy.executeFlow(_hg)) {
       FlowBase::init(currentUpperBound, current_metrics.heaviest_block_weight);
     }
 
@@ -259,7 +256,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
         current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg);
-        
+
         current_metrics.km1 -= max_gain;
         _stopping_policy.updateStatistics(max_gain);
 
@@ -1013,9 +1010,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   using Base::_performed_moves;
   using Base::_hns_to_activate;
 
-  using FlowBase::_total_num_steps;
-  using FlowBase::_current_step;
-  using FlowBase::_num_flow_nodes;
   using FlowBase::_step0_imbalance_set;
   using FlowBase::_flow_execution_policy;
 
