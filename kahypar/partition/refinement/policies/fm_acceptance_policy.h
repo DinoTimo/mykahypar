@@ -65,7 +65,6 @@ class FlowAcceptancePolicy : public meta::PolicyBase {
       _ideal_block_weight = static_cast<HypernodeWeight>(raw_ideal_weight);
       _final_upper_bound = raw_ideal_weight * (1.0 + context.partition.epsilon);
       _final_lower_bound = raw_ideal_weight * (1.0 - (context.local_search.fm.lower_bound_multiplier * context.partition.epsilon));
-      DBG1 << V(_final_lower_bound) << V(raw_ideal_weight) << V(_final_upper_bound);
     }
   
 };
@@ -179,10 +178,12 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
   using Base = FlowAcceptancePolicy;
   private:
     BalanceApproachingAcceptancePolicy _balance_approaching_policy;
+    size_t _rounding_zeta;
 
   public:
     StaircaseAcceptancePolicy() : Base(),
-    _balance_approaching_policy() { }
+    _balance_approaching_policy(),
+    _rounding_zeta(0) { }
 
     void init(HypernodeWeight step0_smallest_block_weight, HypernodeWeight step0_heaviest_block_weight, uint32_t total_num_steps, const Hypergraph& hg, const Context& context) override {
       _step0_heaviest_block_weight = step0_heaviest_block_weight;
@@ -192,14 +193,15 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
       _ideal_block_weight = static_cast<HypernodeWeight>(raw_ideal_weight);
       _final_upper_bound = raw_ideal_weight * (1.0 + context.partition.epsilon);
       _balance_approaching_policy.init(step0_smallest_block_weight, step0_heaviest_block_weight, total_num_steps, hg, context);
+      _rounding_zeta = (_step0_heaviest_block_weight - _final_upper_bound) / context.local_search.fm.num_staircase_steps;
     }
 
     HypernodeWeight currentUpperBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
       HypernodeID current_step = static_cast<double>(hypergraph.currentNumNodes() - _step0_num_nodes);
-      if (current_step < 50) { //TODO(fritsch) magic number
+      if (current_step < _rounding_zeta) {
         return _balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context);
       }
-      return std::max(_final_upper_bound, std::max(round(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), context.local_search.flow.rounding_zeta), _final_upper_bound));
+      return std::max(_final_upper_bound, std::max(round(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), _rounding_zeta ), _final_upper_bound));
     }
     
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {

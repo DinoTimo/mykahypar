@@ -198,6 +198,7 @@ struct LocalSearchParameters {
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
     bool use_lower_bound = false;
+    size_t num_staircase_steps = 1;
     RebalancerType rebalancing_order_policy = RebalancerType::UNDEFINED; 
   };
 
@@ -205,7 +206,6 @@ struct LocalSearchParameters {
     AcceptanceRule acceptance_policy = AcceptanceRule::UNDEFINED;
     FlowExecutionMode execution_policy = FlowExecutionMode::UNDEFINED;
     size_t beta = std::numeric_limits<size_t>::max();
-    size_t rounding_zeta = 1;
   };
 
   struct HyperFlowCutter {
@@ -248,7 +248,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     str << "  High imbalance Refinement Parameters:" << std::endl;
     str << "    acceptance policy:                " << params.flow.acceptance_policy << std::endl;
       if (params.flow.acceptance_policy == AcceptanceRule::staircase) {
-        str << "    rounding zeta:                    " << params.flow.rounding_zeta << std::endl;
+        str << "    num staircase steps:              " << params.fm.num_staircase_steps << std::endl;
       }
     str << "    balance convergence speed:        " << params.fm.balance_convergence_speed << std::endl;
     str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;

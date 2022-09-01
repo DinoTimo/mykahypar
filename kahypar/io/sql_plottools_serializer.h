@@ -206,7 +206,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
         << " balance_convergence_time=" << context.local_search.fm.balance_convergence_time
         << " acceptance_policy=" << context.local_search.flow.acceptance_policy;
     if (context.local_search.flow.acceptance_policy == AcceptanceRule::staircase) {
-      oss << " rounding_zeta=" << context.local_search.flow.rounding_zeta;
+      oss << " num staircase steps=" << context.local_search.fm.num_staircase_steps;
     }
     oss << " use_lower_bound=" << context.local_search.fm.use_lower_bound;
     if (context.local_search.fm.use_lower_bound) {
