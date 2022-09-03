@@ -59,8 +59,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = true;
-  static constexpr size_t _max_rebalance_iter = 30; //TODO(fritsch) kinda magic
-
+  static constexpr size_t _max_rebalance_iter = 15; //TODO(fritsch) kinda magic
   using GainCache = KwayGainCache<Gain>;
   using Base = FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
@@ -148,13 +147,14 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
   }
 
-  void performRebalancing(Metrics& best_metrics, std::vector<HypernodeID>& refinement_nodes) {
-    _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
+  void performRebalancing(Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight currentUpperBound) {
     size_t iter = 0;
-    while(best_metrics.heaviest_block_weight > currentUpperBlockWeightBound() && iter < _max_rebalance_iter) { //TODO(fritsch) dont recalculate this
-      iter++;
-      _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, best_metrics, refinement_nodes);
+    while(current_metrics.heaviest_block_weight > currentUpperBound && iter < _max_rebalance_iter) { //TODO(fritsch)
+      _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
+      _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, current_metrics, refinement_nodes, currentUpperBound);
+      ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);
     }
+    ASSERT(current_metrics.heaviest_block_weight <= currentUpperBound);
   }
 
   void setStep0Values() {
@@ -177,11 +177,12 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       return false;
     }
 
-    if (best_metrics.heaviest_block_weight > currentUpperBlockWeightBound() && _rebalance_execution_policy.executeFlow(_hg)) {
+    HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
+    if (best_metrics.heaviest_block_weight > currentUpperBound && _rebalance_execution_policy.executeFlow(_hg)) {
       //By reordering the arguemnts a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
       //This behaviour is currently desired this way
-      DBG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBlockWeightBound();
-      performRebalancing(best_metrics, refinement_nodes);
+      DBG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBound;
+      performRebalancing(best_metrics, refinement_nodes, currentUpperBound);
       DBG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight << "\n\n";
     }
 
@@ -204,7 +205,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     int touched_hns_since_last_improvement = 0;
     _stopping_policy.resetStatistics();
 
-    HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
     
     const double beta = log(_hg.currentNumNodes());
 

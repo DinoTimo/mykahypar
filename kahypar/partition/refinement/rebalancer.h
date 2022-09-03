@@ -63,8 +63,8 @@ class Rebalancer {
       }
     }
 
-    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes) {
-      _current_upper_bound = refiner.currentUpperBlockWeightBound();
+    void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight current_upper_bound) {
+      _current_upper_bound = current_upper_bound;
       reset();
       // ------------------------------
       // calculate connected blocks
@@ -229,7 +229,7 @@ class Rebalancer {
           }
         }
       } else {
-        DBG << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]";
+        DBG0 << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]";
         ASSERT(_hg.nodeIsEnabled(move.node));
         _hg.changeNodePart(move.node, block, move.to_part);
         moves.push_back(Move{move.node, block, move.to_part});
@@ -301,13 +301,17 @@ class Rebalancer {
     }
 
     std::pair<bool, std::pair<HypernodeID, Gain>> highestGainMoveToNotOverloadedBlock(HypernodeID node) const {
+      return highestGainMoveToNotOverloadedBlock(node, false);
+    }
+
+    std::pair<bool, std::pair<HypernodeID, Gain>> highestGainMoveToNotOverloadedBlock(HypernodeID node, bool ignore_neighbourhood) const {
       const PartitionID from_part = _hg.partID(node);
       Gain max_gain = _invalid_gain;
       PartitionID max_to_part = _invalid_part;
-      bool foundAnyMove = false; 
+      bool foundAnyMove = false;
       for (PartitionID to_part = 0; to_part < k; to_part++) {
         if (from_part == to_part
-        || !_adjacency_bitmap[from_part * (k - 1) + to_part]
+        || (!_adjacency_bitmap[from_part * (k - 1) + to_part] && !ignore_neighbourhood)
         || excessWeight(from_part) <= 0
         || _hg.partWeight(to_part) + _hg.nodeWeight(node) > _current_upper_bound) {
           continue;
@@ -328,9 +332,13 @@ class Rebalancer {
           max_to_part = to_part;
         }
       }
+      if (!foundAnyMove && !ignore_neighbourhood) {
+        return highestGainMoveToNotOverloadedBlock(node, true);
+      } 
       ASSERT((max_to_part == _invalid_part) == (max_gain == _invalid_gain));
       ASSERT((max_to_part < k || max_to_part == _invalid_part) && max_to_part != from_part);
       ASSERT(max_to_part == _invalid_part || _hg.partWeight(max_to_part) + _hg.nodeWeight(node) <= _current_upper_bound);
+      ASSERT(foundAnyMove || !ignore_neighbourhood, "Expects to always find a move if neighbourhood is ignored");
       if (foundAnyMove) {
         ASSERT(max_gain != _invalid_gain);
         max_gain = (max_gain >= 0) ? max_gain * _hg.nodeWeight(node) : max_gain / _hg.nodeWeight(node);
