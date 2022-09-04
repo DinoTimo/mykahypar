@@ -175,7 +175,7 @@ class ImbalanceHoldingAcceptancePolicy : public FlowAcceptancePolicy {
       //for large large x >> c it should hold: f(x) == _final_lower_bound
       double tan = tanh(b * (x - c));
       double value = a * tan + d;
-      ASSERT(bound <= _final_lower_bound);
+      ASSERT(value <= _final_lower_bound);
       ASSERT(value >= 0, V(value));
       return value;
     }
