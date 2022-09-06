@@ -20,7 +20,7 @@
 namespace kahypar {
 
 class Rebalancer {
-  static constexpr bool debug = true;
+  static constexpr bool debug = false;
   const static PartitionID _invalid_part = -1;
   const static Gain _invalid_gain = std::numeric_limits<Gain>::min();
   using Queue = ds::BinaryMinMaxHeap<HypernodeWeight, HypernodeWeight>;
@@ -146,7 +146,7 @@ class Rebalancer {
       if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::reverse_topological) {
         reorderOverloadedBlocks(overloaded_blocks);
       }
-      LOG << "Overloaded blocks:" << joinVector(overloaded_blocks, "{", ",", "}");
+      DBG << "Overloaded blocks:" << joinVector(overloaded_blocks, "{", ",", "}");
       ASSERT(!overloaded_blocks.empty());
       bool movedAnythingThisIteration = true;
       while (movedAnythingThisIteration) {
@@ -163,7 +163,7 @@ class Rebalancer {
     void updateOverloadedBlocks(std::vector<PartitionID>& overloaded_blocks) {
       overloaded_blocks.erase(std::remove_if(overloaded_blocks.begin(), overloaded_blocks.end(), [&](PartitionID& block) {
         if (_hg.partWeight(block) <= _current_upper_bound) {
-          LOG << V(block) << "has been balanced";
+          DBG << V(block) << "has been balanced";
           return true;
         }
         return false;
@@ -185,14 +185,14 @@ class Rebalancer {
       } else if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::do_nothing) {
         return false;
       } else {
-        LOG << "No valid Rebalancing Order Policy";
+        DBG << "No valid Rebalancing Order Policy";
         return false;
       } 
     }
 
     bool tryToMoveOutOfBlock(const PartitionID& block, std::vector<Move>& moves) {
       if (_queues[block].empty()) {
-        LOG << "No moves available for" << V(block) << " but still has weight " << _hg.partWeight(block);
+        DBG << "No moves available for" << V(block) << " but still has weight " << _hg.partWeight(block);
         return false;
       }
       const NodeMove move = nodeMoveFromInt(_queues[block].max());
@@ -206,9 +206,9 @@ class Rebalancer {
       if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound
       || gainChangedFor(move.node, move.to_part, relativeGain))  {
         if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound) {
-          LOG << V(move.to_part) << " would become overloaded if " << V(move.node) << "[" << _hg.nodeWeight(move.node) << "] was moved to it";
+          DBG << V(move.to_part) << " would become overloaded if " << V(move.node) << "[" << _hg.nodeWeight(move.node) << "] was moved to it";
         } else {
-          LOG << "gain changed for node " << move.node << " from part " << block << " to part " << move.to_part;
+          DBG << "gain changed for node " << move.node << " from part " << block << " to part " << move.to_part;
         }
         if (_hg.isBorderNode(move.node)) {
           std::pair<bool, std::pair<PartitionID, Gain>> newMove = highestGainMoveToNotOverloadedBlock(move.node);

@@ -58,7 +58,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
           private FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
-  static constexpr bool debug = true;
+  static constexpr bool debug = false;
   static constexpr size_t _max_rebalance_iter = 15; //TODO(fritsch) kinda magic
   using GainCache = KwayGainCache<Gain>;
   using Base = FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,

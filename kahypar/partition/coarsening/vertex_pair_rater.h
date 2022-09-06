@@ -95,9 +95,9 @@ class VertexPairRater {
 
   ~VertexPairRater() {
     if (_context.coarsening.rating.ignore_max_node_weight == IgnoreMaxNodeWeight::ignore_max_node_weight) {
-      LOG << "Number of times normal contraction occured: " << _num_contractions;
-      LOG << "Number of times max node weight ignored: " << _num_ignores;
-      LOG << "Number of times contraction denied because of weight: " << _num_denied_contractions;
+      DBG << "Number of times normal contraction occured: " << _num_contractions;
+      DBG << "Number of times max node weight ignored: " << _num_ignores;
+      DBG << "Number of times contraction denied because of weight: " << _num_denied_contractions;
     }
   }
 
