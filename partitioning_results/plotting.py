@@ -23,8 +23,11 @@ def main():
   plt.show()
 
 def readLines(path):
-  with open(path) as file:
-    return file.read().splitlines()
+  try:
+    with open(path) as file:
+      return file.read().splitlines()
+  except:
+    return []
 
 def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfinal):
   actuals = readLines(actualpath)
@@ -51,10 +54,11 @@ def showImbalance():
     plt.vlines(rebalancesteps, 0, floatify(readLines(targetupperpath))[0], 'g', 'dashed', 'rebalance steps')
   plt.legend()
   infoLines = readLines(infopath)
-  infoLines.pop()
-  infoLines.pop()
-  infoLines.pop()
-  infoLines.pop()
+  if (len(infoLines) > 3):
+    infoLines.pop()
+    infoLines.pop()
+    infoLines.pop()
+    infoLines.pop()
   plt.title(', '.join(infoLines))
 
 

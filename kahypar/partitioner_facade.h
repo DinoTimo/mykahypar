@@ -27,6 +27,7 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include <filesystem>
 
 #include "kahypar/definitions.h"
 #include "kahypar/io/hypergraph_io.h"
@@ -44,6 +45,8 @@ namespace kahypar {
 class PartitionerFacade {
  public:
   void partition(Hypergraph& hypergraph, Context& context) {
+    clearPreviousPartitioningData();
+
     io::printBanner(context);
 
     sanityCheck(hypergraph, context);
@@ -83,6 +86,13 @@ class PartitionerFacade {
   }
 
  private:
+  void clearPreviousPartitioningData() {
+    const std::filesystem::path part_results_dir("../partitioning_results/data/");
+    std::filesystem::remove_all(part_results_dir);
+    std::filesystem::create_directory(part_results_dir);
+  }
+
+
   void setupVcycleRefinement(Hypergraph& hypergraph, Context& context) {
     // We perform direct k-way V-cycle refinements.
     context.partition.vcycle_refinement_for_input_partition = true;

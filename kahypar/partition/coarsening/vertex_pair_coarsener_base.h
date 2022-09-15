@@ -173,11 +173,13 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     if (log_level == FileLogLevel::write_imbalance_km1 || log_level == FileLogLevel::write_imbalance_km1_target) {
       writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
       writeVectorToFile(_lower_bounds, "../partitioning_results/data/lower_bounds.txt");
-      writeVectorToFile(_target_lower_bounds, "../partitioning_results/data/target_lower_bounds.txt");
       writeVectorToFile(_upper_bounds, "../partitioning_results/data/upper_bounds.txt");
-      writeVectorToFile(_target_upper_bounds, "../partitioning_results/data/target_upper_bounds.txt");
       writeVectorToFile(_standard_divs, "../partitioning_results/data/standard_divs.txt");
       writeToFile(generalInfo(), "../partitioning_results/data/info.txt");
+    }
+    if (log_level == FileLogLevel::write_imbalance_km1_target) {
+      writeVectorToFile(_target_lower_bounds, "../partitioning_results/data/target_lower_bounds.txt");
+      writeVectorToFile(_target_upper_bounds, "../partitioning_results/data/target_upper_bounds.txt");
     }
     bool improvement_found = false;
     switch (_context.partition.objective) {
@@ -212,20 +214,24 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     infos.push_back("graph : " + path.substr(path.find_last_of("/") + 1));
     infos.push_back("k = " + std::to_string(_context.partition.k));
     infos.push_back("e = " + std::to_string(_context.partition.epsilon));
-    BalancingFlowModel model = _context.local_search.fm.flow_model;
-    if (model != BalancingFlowModel::UNDEFINED) {
+    RefinementAlgorithm refinement_algo = _context.local_search.algorithm;
+    bool custom_algo = false;
+    if (refinement_algo == RefinementAlgorithm::rebalancing_kway_fm_km1) {
       std::stringstream s;
-      if (_context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
-        s << model;
-        infos.push_back("flow_model = " + s.str());
-      }
-      if (_context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
-        s << _context.local_search.fm.rebalancing_order_policy;
-        infos.push_back("rebalancing order = " + s.str());
-      }
-      std::stringstream s2;
-      s2 << _context.local_search.flow.acceptance_policy;
-      infos.push_back("upper bound = " + s2.str());
+      s << _context.local_search.fm.rebalancing_order_policy;
+      infos.push_back("rebalancing order = " + s.str());
+      custom_algo = true;
+    }
+    if (refinement_algo == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
+      std::stringstream s;
+      s << _context.local_search.fm.flow_model;
+      infos.push_back("flow_model = " + s.str());
+      custom_algo = true;
+    }
+    if (custom_algo) {
+      std::stringstream s;
+      s << _context.local_search.flow.acceptance_policy;
+      infos.push_back("upper bound = " + s.str());
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
       infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
