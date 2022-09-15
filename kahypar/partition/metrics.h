@@ -175,14 +175,23 @@ inline int findElem(std::vector<Content> vec, Content elem) {
   return index;
 }
 
-inline void performBreadthFirstSearch(std::vector<HypernodeID> & nodes, const Hypergraph & hg, const HypernodeID startingNode, std::vector<bool> & activated) {
-  for (HyperedgeID edge : hg.incidentEdges(startingNode)) {
-    for (HypernodeID node : hg.pins(edge)) {
-      if (node == startingNode || activated[node] == false) {
-        continue;
+inline void performBreadthFirstSearch(const Hypergraph & hg, const HypernodeID startingNode, std::vector<bool> & seen) {
+  std::vector<HypernodeID> q;
+  q.push_back(startingNode);
+  seen[startingNode] = true;
+  size_t seen_nodes = 0;
+  while (!q.empty()) {
+    HypernodeID node = q.back();
+    q.pop_back();
+    for (const HyperedgeID& edge : hg.incidentEdges(node)) {
+      for (const HypernodeID& neighbour_node : hg.pins(edge)) {
+        if (seen[neighbour_node] || neighbour_node == node) {
+          continue;
+        }
+        seen[neighbour_node] = true;
+        seen_nodes++;
+        q.push_back(neighbour_node);
       }
-      activated[node] = false;
-      performBreadthFirstSearch(nodes, hg, node, activated);
     }
   }
 }
@@ -238,21 +247,19 @@ static inline size_t amountConnectedComponents(const Hypergraph & hg) {
         ASSERT(hg.nodeIsEnabled(hn));
       }
       return true;
-    } (), "Error in locking of he/parts!");
+    } (), "All nodes must be enabled");
   std::vector<HypernodeID> nodes(hg.nodes().first, hg.nodes().second);
-  std::vector<bool> activated(nodes.size(), true);
+  std::vector<bool> seen(nodes.size(), false);
   if (nodes.empty()) {
     return 0;
   }
   size_t count = 0;
-  HypernodeID startingNode;
-  for (size_t i = 0; i < nodes.size(); i++) {
-    if (!activated[i]) {
+  for (HypernodeID node : nodes) {
+    if (seen[node]) {
       continue;
     }
-    startingNode = nodes[i];
-    activated[i] = false;
-    internal::performBreadthFirstSearch(nodes, hg, startingNode, activated);
+    seen[node] = true;
+    internal::performBreadthFirstSearch(hg, node, seen);
     count++;
   }
   return count;
