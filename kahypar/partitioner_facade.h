@@ -45,7 +45,9 @@ namespace kahypar {
 class PartitionerFacade {
  public:
   void partition(Hypergraph& hypergraph, Context& context) {
-    clearPreviousPartitioningData();
+    if (context.logging.file_log_level != FileLogLevel::no_file_logging) {
+      clearPreviousPartitioningData();
+    }
 
     io::printBanner(context);
 
@@ -87,6 +89,7 @@ class PartitionerFacade {
 
  private:
   void clearPreviousPartitioningData() {
+
     const std::filesystem::path part_results_dir("../partitioning_results/data/");
     std::filesystem::remove_all(part_results_dir);
     std::filesystem::create_directory(part_results_dir);
