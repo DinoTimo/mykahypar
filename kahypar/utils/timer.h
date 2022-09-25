@@ -41,6 +41,7 @@ enum class Timepoint : uint8_t {
   v_cycle_local_search,
   post_sparsifier_restore,
   evolutionary,
+  balancing,
   COUNT
 };
 
@@ -97,6 +98,7 @@ class Timer {
     double total_postprocessing = 0.0;
     double post_sparsifier_restore = 0.0;
     double total_evolutionary = 0.0;
+    double total_balancing = 0.0;
     std::vector<double> evolutionary = { };
     std::vector<double> v_cycle_coarsening = { };
     std::vector<double> v_cycle_local_search = { };
@@ -158,6 +160,9 @@ class Timer {
     for (const Timing& timing : _timings) {
       if (timing.timepoint == Timepoint::flow_refinement)
         _result.total_flow_refinement += timing.time;
+
+      if (timing.timepoint == Timepoint::balancing)
+        _result.total_balancing += timing.time;
 
       if (timing.type == ContextType::main) {
         switch (timing.timepoint) {

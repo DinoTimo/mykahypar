@@ -4,6 +4,7 @@
 #include "kahypar/definitions.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/meta/mandatory.h"
+#include "kahypar/utils/timer.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/refinement/flow/graph_flow_solver.h"
@@ -57,10 +58,16 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
     void init(HypernodeWeight currentUpperBound, HypernodeWeight currentWeight) {
       if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
+        HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
         calculateLaplaceMatrix();
         solveBalancingEquations();
+        HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+        Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
       } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
+        HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
         calculateCapacityMatrix(currentUpperBound, currentWeight);
+        HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+        Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
       } else {
         LOG << "Illegal Flow model: " << _context.local_search.fm.flow_model;
       }
@@ -68,9 +75,13 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
     bool moveFeasibilityByFlow(PartitionID from, PartitionID to, HypernodeID node) {
       if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
-        return _hg.nodeWeight(node) <= 2 * (_flow_vector[from] - _flow_vector[to]);
+        return _hg.nodeWeight(node) <= 2 * (_flow_vector[from] - _flow_vector[to]); //Dont time this as tracking the time of simple vector access and subtraction is not worth it
       } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
-        return tryToFindFlow(from, to, _hg.nodeWeight(node));
+        HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+        bool flow_found = tryToFindFlow(from, to, _hg.nodeWeight(node));
+        HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+        Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
+        return flow_found;
       } else {
         LOG << "Illegal Flow model: " << _context.local_search.fm.flow_model;
         return false;

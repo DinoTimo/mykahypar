@@ -260,6 +260,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
         << " initialPartitionTime=" << timings.total_initial_partitioning
         << " uncoarseningRefinementTime=" << timings.total_local_search
         << " flowTime=" << timings.total_flow_refinement
+        << " balancingTime=" << timings.total_balancing
         << " postMinHashSparsifierTime=" << timings.post_sparsifier_restore;
   }
 
