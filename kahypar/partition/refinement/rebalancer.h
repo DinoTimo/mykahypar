@@ -64,7 +64,7 @@ class Rebalancer {
 
     void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight current_upper_bound) {
       if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::do_nothing) {
-        return false;
+        return;
       }
       _current_upper_bound = current_upper_bound;
       reset();
