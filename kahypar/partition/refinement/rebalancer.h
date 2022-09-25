@@ -46,8 +46,7 @@ class Rebalancer {
     _queue_weights(k, 0),
     _current_upper_bound(0),
     _adjacency_bitmap(k * (k - 1), false),
-    _is_inserted_into_any_q_bitmap(hg.initialNumNodes()),
-    _reverse_topological_block_order(hg.k()) { }
+    _is_inserted_into_any_q_bitmap(hg.initialNumNodes()) { }
 
     ~Rebalancer() = default;
 
@@ -64,6 +63,9 @@ class Rebalancer {
     }
 
     void rebalance(HypernodeWeight heaviest_node_weight, IRefiner& refiner, Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight current_upper_bound) {
+      if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::do_nothing) {
+        return false;
+      }
       _current_upper_bound = current_upper_bound;
       reset();
       // ------------------------------
@@ -143,9 +145,6 @@ class Rebalancer {
           overloaded_blocks.push_back(block);
         }
       }
-      if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::reverse_topological) {
-        reorderOverloadedBlocks(overloaded_blocks);
-      }
       DBG << "Overloaded blocks:" << joinVector(overloaded_blocks, "{", ",", "}");
       ASSERT(!overloaded_blocks.empty());
       bool movedAnythingThisIteration = true;
@@ -155,7 +154,7 @@ class Rebalancer {
         //block order policy
         //for now implement round robin in arbitrary order
         for (PartitionID block : overloaded_blocks) {
-          movedAnythingThisIteration = movedAnythingThisIteration || handleBlock(block, moves);
+          movedAnythingThisIteration = movedAnythingThisIteration || tryToMoveOutOfBlock(block, moves);
         }
       }
     }
@@ -168,26 +167,6 @@ class Rebalancer {
         }
         return false;
       }), overloaded_blocks.end());
-    }
-
-    //TODO(fritsch) this shouldnt have an if else check. this should be solved via inheritance/templates.
-    bool handleBlock(const PartitionID& block, std::vector<Move>& moves) {
-      if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::round_robin) {
-        return tryToMoveOutOfBlock(block, moves);
-      } else if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::reverse_topological) {
-        bool improved = true;
-        size_t iter = 0;
-        while (improved && iter < 100) { //TODO(fritsch) magic number
-          improved = tryToMoveOutOfBlock(block, moves);
-          iter++;
-        }
-        return iter > 0;
-      } else if (_context.local_search.fm.rebalancing_order_policy == RebalancerType::do_nothing) {
-        return false;
-      } else {
-        DBG << "No valid Rebalancing Order Policy";
-        return false;
-      } 
     }
 
     bool tryToMoveOutOfBlock(const PartitionID& block, std::vector<Move>& moves) {
@@ -399,6 +378,5 @@ class Rebalancer {
     HypernodeWeight _current_upper_bound;
     std::vector<bool> _adjacency_bitmap;
     std::vector<bool> _is_inserted_into_any_q_bitmap;
-    std::vector<size_t> _reverse_topological_block_order;
 };
 }

@@ -160,7 +160,6 @@ enum class BalancingFlowModel : uint8_t {
 
 enum class RebalancerType : uint8_t {
   round_robin,
-  reverse_topological,
   do_nothing,
   UNDEFINED
 };
@@ -170,6 +169,7 @@ enum class Objective : uint8_t {
   km1,
   UNDEFINED
 };
+
 enum class EvoReplaceStrategy : uint8_t {
   worst,
   diverse,
@@ -480,7 +480,6 @@ static std::ostream& operator<< (std::ostream& os, const BalancingFlowModel& mod
 
 static std::ostream& operator<< (std::ostream& os, const RebalancerType& order) {
   switch (order) {
-    case RebalancerType::reverse_topological : return os << "reverse_topological";
     case RebalancerType::round_robin : return os << "round_robin";
     case RebalancerType::do_nothing : return os << "do_nothing";
     case RebalancerType::UNDEFINED: return os << "UNDEFINED";
@@ -654,9 +653,7 @@ static BalancingFlowModel balancingFlowModelFromString(const std::string& model)
 }
 
 static RebalancerType rebalancerTypeFromString(const std::string& order) {
-  if (order == "reverse_topological") {
-    return RebalancerType::reverse_topological;
-  } else if (order == "round_robin") {
+  if (order == "round_robin") {
     return RebalancerType::round_robin;
   } else if (order == "do_nothing") {
     return RebalancerType::do_nothing;
@@ -679,6 +676,35 @@ static CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type
   LOG << "Illegal option:" << type;
   exit(0);
   return CoarseningAlgorithm::heavy_lazy;
+}
+
+static RefinementAlgorithm modifiedEpsilonFromString(const std::string& type) {
+  if (type == "twoway_fm") {
+    return RefinementAlgorithm::twoway_fm;
+  } else if (type == "kway_fm") {
+    return RefinementAlgorithm::kway_fm;
+  } else if (type == "kway_fm_km1") {
+    return RefinementAlgorithm::kway_fm_km1;
+  } else if (type == "twoway_hyperflow_cutter") {
+    return RefinementAlgorithm::twoway_hyperflow_cutter;
+  } else if (type == "kway_hyperflow_cutter") {
+    return RefinementAlgorithm::kway_hyperflow_cutter;
+  } else if (type == "kway_fm_hyperflow_cutter") {
+    return RefinementAlgorithm::kway_fm_hyperflow_cutter;
+  } else if (type == "twoway_fm_hyperflow_cutter") {
+    return RefinementAlgorithm::twoway_fm_hyperflow_cutter;
+  } else if (type == "kway_fm_hyperflow_cutter_km1") {
+    return RefinementAlgorithm::kway_fm_hyperflow_cutter_km1;
+  } else if (type == "flow_balancing_kway_fm_km1") {
+    return RefinementAlgorithm::flow_balancing_kway_fm_km1;
+  } else if (type == "rebalancing_kway_fm_km1") {
+    return RefinementAlgorithm::rebalancing_kway_fm_km1;
+  } else if (type == "do_nothing") {
+    return RefinementAlgorithm::do_nothing;
+  }
+  LOG << "Illegal option:" << type;
+  exit(0);
+  return RefinementAlgorithm::kway_fm;
 }
 
 static RefinementAlgorithm refinementAlgorithmFromString(const std::string& type) {

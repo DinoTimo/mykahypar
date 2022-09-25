@@ -1871,7 +1871,7 @@ class GenericHypergraph {
     for (const PartitionID comm : _communities) {
       largestCommunityID = std::max(comm, largestCommunityID);
     }
-    _community_sizes = std::vector<HypernodeWeight>(largestCommunityID + 1, 0); //TODO: i dont know if this '+ 1' is necessary
+    _community_sizes = std::vector<HypernodeWeight>(largestCommunityID + 1, 0);
     for (HypernodeID hn = 0; hn < _num_hypernodes; hn++) {
       _community_sizes[_communities[hn]]++;
     }
