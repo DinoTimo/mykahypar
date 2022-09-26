@@ -160,14 +160,13 @@ class CoarsenerBase {
                                               + _max_hn_weights.back().max_weight },
                                             current_changes,
                                             current_metrics);
-    HEAVY_REFINEMENT_ASSERT(current_metrics.cut == metrics::hyperedgeCut(_hg));
-    HEAVY_REFINEMENT_ASSERT(current_metrics.heaviest_block_weight == metrics::heaviest_block_weight(_hg));
-    HEAVY_REFINEMENT_ASSERT(current_metrics.km1 == metrics::km1(_hg));
+    HEAVY_REFINEMENT_ASSERT(current_metrics.cut == metrics::hyperedgeCut(_hg) || _context.partition.objective != Objective::cut);
+    HEAVY_REFINEMENT_ASSERT(current_metrics.km1 == metrics::km1(_hg) || _context.partition.objective != Objective::km1);
     ASSERT(current_metrics.cut                    <= old_cut             ||
           (current_metrics.heaviest_block_weight  <= old_heaviest_block) ||
-          (current_metrics.km1                    <= old_km1), //TODO(fritsch check for some improvement)
+          (current_metrics.km1                    <= old_km1), 
            V(current_metrics.cut) << V(old_cut) << V(current_metrics.cut)
-                                  << V(current_metrics.km1) << V(old_km1)); //TODO(fritsch) this is technically duplicated code from the fm improvement policy
+                                  << V(current_metrics.km1) << V(old_km1));
     ASSERT(_context.local_search.algorithm != RefinementAlgorithm::flow_balancing_kway_fm_km1 || old_km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1, V(old_km1) << V(current_metrics.km1));
     DBGC(_context.partition.objective == Objective::cut) << old_cut << "-->" << current_metrics.cut;
     DBGC(_context.partition.objective == Objective::km1) << old_km1 << "-->" << current_metrics.km1;
