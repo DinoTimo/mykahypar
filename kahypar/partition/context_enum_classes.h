@@ -98,6 +98,14 @@ enum class CoarseningAlgorithm : uint8_t {
   UNDEFINED
 };
 
+enum class ModifiedEpsilon : uint8_t {
+  same,
+  custom,
+  lpt,
+  node_avg,
+  UNDEFINED
+};
+
 enum class RefinementAlgorithm : uint8_t {
   twoway_fm,
   kway_fm,
@@ -404,6 +412,18 @@ static std::ostream& operator<< (std::ostream& os, const CoarseningAlgorithm& al
   return os << static_cast<uint8_t>(algo);
 }
 
+static std::ostream& operator<< (std::ostream& os, const ModifiedEpsilon& eps) {
+  switch (eps) {
+    case ModifiedEpsilon::custom: return os << "custom";
+    case ModifiedEpsilon::lpt: return os << "lpt";
+    case ModifiedEpsilon::node_avg: return os << "node_avg";
+    case ModifiedEpsilon::same: return os << "same";
+    case ModifiedEpsilon::UNDEFINED: return os << "UNDEFINED";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(eps);
+}
+
 static std::ostream& operator<< (std::ostream& os, const RefinementAlgorithm& algo) {
   switch (algo) {
     case RefinementAlgorithm::twoway_fm: return os << "twoway_fm";
@@ -678,33 +698,19 @@ static CoarseningAlgorithm coarseningAlgorithmFromString(const std::string& type
   return CoarseningAlgorithm::heavy_lazy;
 }
 
-static RefinementAlgorithm modifiedEpsilonFromString(const std::string& type) {
-  if (type == "twoway_fm") {
-    return RefinementAlgorithm::twoway_fm;
-  } else if (type == "kway_fm") {
-    return RefinementAlgorithm::kway_fm;
-  } else if (type == "kway_fm_km1") {
-    return RefinementAlgorithm::kway_fm_km1;
-  } else if (type == "twoway_hyperflow_cutter") {
-    return RefinementAlgorithm::twoway_hyperflow_cutter;
-  } else if (type == "kway_hyperflow_cutter") {
-    return RefinementAlgorithm::kway_hyperflow_cutter;
-  } else if (type == "kway_fm_hyperflow_cutter") {
-    return RefinementAlgorithm::kway_fm_hyperflow_cutter;
-  } else if (type == "twoway_fm_hyperflow_cutter") {
-    return RefinementAlgorithm::twoway_fm_hyperflow_cutter;
-  } else if (type == "kway_fm_hyperflow_cutter_km1") {
-    return RefinementAlgorithm::kway_fm_hyperflow_cutter_km1;
-  } else if (type == "flow_balancing_kway_fm_km1") {
-    return RefinementAlgorithm::flow_balancing_kway_fm_km1;
-  } else if (type == "rebalancing_kway_fm_km1") {
-    return RefinementAlgorithm::rebalancing_kway_fm_km1;
-  } else if (type == "do_nothing") {
-    return RefinementAlgorithm::do_nothing;
-  }
-  LOG << "Illegal option:" << type;
+static ModifiedEpsilon modifiedEpsilonFromString(const std::string& eps) {
+  if (eps == "same") {
+    return ModifiedEpsilon::same;
+  } else if (eps == "custom") {
+    return ModifiedEpsilon::custom;
+  } else if (eps == "lpt") {
+    return ModifiedEpsilon::lpt;
+  } else if (eps == "node_avg") {
+    return ModifiedEpsilon::node_avg;
+  } 
+  LOG << "Illegal option:" << eps;
   exit(0);
-  return RefinementAlgorithm::kway_fm;
+  return ModifiedEpsilon::UNDEFINED;
 }
 
 static RefinementAlgorithm refinementAlgorithmFromString(const std::string& type) {

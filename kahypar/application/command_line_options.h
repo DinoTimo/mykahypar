@@ -479,10 +479,20 @@ po::options_description createInitialPartitioningOptionsDescription(Context& con
     po::value<bool>(&context.initial_partitioning.enable_early_restart)->value_name("<bool>"),
     "Enable early restart with prepacking of current bisection if infeasible"
     "(default: false)")
-    ("i-bp-use-modified-epsilon",
-    po::value<bool>(&context.initial_partitioning.use_modified_epsilon)->value_name("<bool>"),
-    "Use modified epsilon for initial partitioning"
+    ("i-custom-epsilon",
+    po::value<double>(&context.initial_partitioning.custom_epsilon)->value_name("<double>"),
+    "Epsilon used in IP, only used with ModifiedEpsilon::custom"
     "(default: false)")
+     ("i-modified-epsilon",
+    po::value<std::string>()->value_name("<string>")->notifier(
+      [&](const std::string& modified_eps) {
+      context.initial_partitioning.modified_epsilon = kahypar::modifiedEpsilonFromString(modified_eps);
+    }),
+    "Modified Epsilon: \n"
+    " - default  \n"
+    " - custom, declared in .ini \n"
+    " - calculated via LPT \n"
+    " - node avg")
     ("i-bp-late-restart",
     po::value<bool>(&context.initial_partitioning.enable_late_restart)->value_name("<bool>"),
     "Enable late restart with prepacking of bisections, i.e. if the resulting partition is imbalanced"

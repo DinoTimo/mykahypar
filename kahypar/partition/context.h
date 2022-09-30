@@ -294,7 +294,8 @@ struct InitialPartitioningParameters {
   CoarseningParameters coarsening = { };
   LocalSearchParameters local_search = { };
   uint32_t nruns = std::numeric_limits<uint32_t>::max();
-  bool use_modified_epsilon = false;
+  ModifiedEpsilon modified_epsilon = ModifiedEpsilon::same;
+  double custom_epsilon = std::numeric_limits<double>::max();
 
   // The following parameters are only used internally and are not supposed to
   // be changed by the user.
@@ -327,7 +328,10 @@ inline std::ostream& operator<< (std::ostream& str, const InitialPartitioningPar
   str << "  Bin Packing algorithm:              " << params.bp_algo << std::endl;
   str << "    early restart on infeasible:      " << params.enable_early_restart << std::endl;
   str << "    late restart on infeasible:       " << params.enable_late_restart << std::endl;
-  str << "    use modified epsilon:             " << params.use_modified_epsilon << std::endl;
+  str << "    modified epsilon:                 " << params.modified_epsilon << std::endl;
+  if (params.modified_epsilon == ModifiedEpsilon::custom) {
+    str << "    customized epsilon:               " << params.custom_epsilon << std::endl;  
+  }
   if (params.technique == InitialPartitioningTechnique::multilevel) {
     str << "IP Coarsening:                        " << std::endl;
     str << params.coarsening;
