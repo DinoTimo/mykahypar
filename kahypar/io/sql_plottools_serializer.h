@@ -162,6 +162,8 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << context.initial_partitioning.coarsening.contraction_limit_multiplier
       << " IP_coarsening_modified_epsilon="
       << context.initial_partitioning.modified_epsilon
+      << " IP_coarsening_custom_epsilon="
+      << context.initial_partitioning.custom_epsilon
       << " IP_coarsening_rating_function="
       << context.initial_partitioning.coarsening.rating.rating_function
       << " IP_coarsening_rating_use_communities="

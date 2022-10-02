@@ -121,6 +121,7 @@ class PoolInitialPartitioner : public IInitialPartitioner,
     std::vector<PartitionID> best_partition(_hg.initialNumNodes());
     double original_epsilon = _context.partition.epsilon;
     modifyEpsilon();
+    _context.stats.add(StatTag::InitialPartitioning, "initial_epsilon", _context.partition.epsilon);
     unsigned int n = _partitioner_pool.size() - 1;
     for (unsigned int i = 0; i <= n; ++i) {
       // If the (n-i)th bit of pool_type is set we execute the corresponding
