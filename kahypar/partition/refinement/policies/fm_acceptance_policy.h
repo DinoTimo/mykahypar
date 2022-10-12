@@ -194,30 +194,32 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
   using Base = FlowAcceptancePolicy;
   private:
     BalanceApproachingAcceptancePolicy _balance_approaching_policy;
-    double _rounding_zeta;
+    std::vector<HypernodeWeight> _imbalance_steps;
 
   public:
     StaircaseAcceptancePolicy() : Base(),
     _balance_approaching_policy(),
-    _rounding_zeta(0.0) { }
+    _imbalance_steps() { }
 
      void init(HypernodeWeight step0_smallest_block_weight, HypernodeWeight step0_heaviest_block_weight, HypernodeID step0_num_nodes, const Hypergraph& hg, const Context& context) override {
       Base::init(step0_smallest_block_weight, step0_heaviest_block_weight, step0_num_nodes, hg, context);
       _balance_approaching_policy.init(step0_smallest_block_weight, step0_heaviest_block_weight, step0_num_nodes, hg, context);
-      _rounding_zeta = static_cast<double>(_step0_heaviest_block_weight - _final_upper_bound) / static_cast<double>(context.local_search.fm.num_staircase_steps);
-      DBG << V(_rounding_zeta) << V(_step0_heaviest_block_weight) << V(_final_upper_bound);
+      _imbalance_steps.resize(context.local_search.fm.num_staircase_steps, 0.0);
+      double rounding_zeta = static_cast<double>(_step0_heaviest_block_weight - _final_upper_bound) / static_cast<double>(context.local_search.fm.num_staircase_steps);
+      size_t i = 0;
+      _imbalance_steps[i++] = _final_upper_bound;
+      for (; i < context.local_search.fm.num_staircase_steps - 1; i++) {
+        _imbalance_steps[i] = static_cast<HypernodeWeight>(i * rounding_zeta + _final_upper_bound);
+      }
+      _imbalance_steps[i] = _step0_heaviest_block_weight;
+      DBG << V(rounding_zeta) << V(_step0_heaviest_block_weight) << V(_final_upper_bound);
     }
 
     HypernodeWeight currentUpperBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
       if (_step0_heaviest_block_weight <= _final_upper_bound) {
         return _final_upper_bound;
       }
-      ASSERT(_rounding_zeta > 0, "Illegal rounding zeta" << V(_rounding_zeta));
-      HypernodeID current_step = static_cast<double>(hypergraph.currentNumNodes() - _step0_num_nodes);
-      if (current_step < _rounding_zeta) {
-        return _balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context);
-      }
-      return std::max(_final_upper_bound, std::max(round(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), std::max(1.0 , _rounding_zeta)), _final_upper_bound));
+      return closestEntry(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), _imbalance_steps);
     }
     
     HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
@@ -225,9 +227,22 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
     }
   
   private:
-    template <typename NumberType, typename RoundingType>
-    static NumberType round(NumberType raw, RoundingType rounding_beta) {
-      return static_cast<NumberType>(static_cast<int>(raw) / static_cast<int>(rounding_beta)) * rounding_beta;
+    template <typename NumberType>
+    static NumberType closestEntry(NumberType value, std::vector<NumberType> entries) {
+      if (entries.empty()) {
+        LOG << "Illegal call entries are empty" << V(value);
+      }
+      NumberType closest_entry = entries[0];
+      NumberType min_diff = std::abs(value - closest_entry);
+      for (NumberType entry : entries) {
+        NumberType diff = std::abs(value - entry);
+        if (diff < min_diff) {
+          min_diff = diff;
+          closest_entry = entry;
+          //this can be implemented more efficiently using the information that the here used entries are sorted. we could break in this case
+        }
+      }
+      return closest_entry;
     }
 };
 

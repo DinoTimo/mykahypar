@@ -148,6 +148,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   }
 
   void performRebalancing(Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight currentUpperBound) {
+    HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     size_t iter = 0;
     while(current_metrics.heaviest_block_weight > currentUpperBound && iter < _max_rebalance_iter) {
       _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
@@ -155,6 +156,8 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       iter++;
       ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);
     }
+    HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+    Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
     ASSERT(current_metrics.heaviest_block_weight <= currentUpperBound);
   }
 
