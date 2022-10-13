@@ -169,6 +169,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
   
     Base::reset();
     _unremovable_he_parts.reset();
+    FlowBase::reset();
+    
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -248,7 +250,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       }
       if (!emptying_block && dont_overload_to_part && FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node)) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
-        FlowBase::updateFlow(max_gain_node, from_part, to_part);
+        FlowBase::updateLaplaceFlow(max_gain_node, from_part, to_part); //quotient flow update itself
         Base::updatePQpartState(from_part,
                                 to_part,
                                 _context.partition.max_part_weights[from_part],

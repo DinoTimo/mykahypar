@@ -39,7 +39,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _total_num_steps(hypergraph.initialNumNodes() - context.partition.k),
       _current_step(0),
       _num_flow_nodes(context.partition.k),
-      _flow_matrix(_num_flow_nodes * _num_flow_nodes, 0),
+      _move_flows(0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _quotient_edge_capacities(context.partition.k * context.partition.k, 0),
       _adjacency_bitmap(context.partition.k * (context.partition.k - 1), 0),
@@ -88,33 +88,45 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       }
     }
 
+    void reset() {
+      _move_flows.clear();
+    }
+
     void rollbackFlow(int last_index, const int min_cut_index) {
       DBG << "min_cut_index=" << min_cut_index;
       DBG << "last_index=" << last_index;
-      while (last_index != min_cut_index) {
-        const HypernodeID hn = _performed_moves[last_index].hn;
-        const PartitionID from_part = _performed_moves[last_index].to_part;
-        const PartitionID to_part = _performed_moves[last_index].from_part;
-        updateFlow(hn, from_part, to_part);
-        --last_index;
+      if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
+        while (last_index != min_cut_index) {
+          const HypernodeID hn = _performed_moves[last_index].hn;
+          const PartitionID from_part = _performed_moves[last_index].to_part;
+          const PartitionID to_part = _performed_moves[last_index].from_part;
+          updateLaplaceFlow(hn, from_part, to_part);
+          --last_index;
+        }
+      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
+        ASSERT(_move_flows.size() == _performed_moves.size(), V(_move_flows.size()) << V(_performed_moves.size()));
+        while (last_index != min_cut_index) {
+          std::vector<HypernodeWeight> tryout_flow = _move_flows[last_index];
+          ASSERT(tryout_flow.size() == _capacity_matrix.size(), V(tryout_flow.size()) << V(_capacity_matrix.size()));
+          for (size_t i = 0; i < tryout_flow.size(); i++) {
+            _capacity_matrix[i] += tryout_flow[i];
+          }
+          --last_index;
+        }
+      } else {
+        LOG << "Error, invalid flow model";
       }
     }
 
-    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
+    void updateLaplaceFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
       if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
         _flow_vector[from_part] -= _hg.nodeWeight(hn);
         _flow_vector[to_part] += _hg.nodeWeight(hn);
-      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
-        _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
-        _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
       }
     }
 
   private:
     bool tryToFindFlow(PartitionID from, PartitionID to, HypernodeWeight weight) {
-      if (_capacity_matrix[from * _num_flow_nodes + to] < weight) {
-        return false;
-      }
       std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, from, to, false));
       ASSERT([&]() {
         HypernodeWeight inFlowAtSink = 0;
@@ -130,6 +142,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         return inFlowAtSink == outFlowAtSource;
       }());
       if ((2 * tryout_flow[from * _num_flow_nodes + from] >= weight)) {
+        _move_flows.push_back(tryout_flow);
         return true;
       } 
       return false;
@@ -235,7 +248,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     uint32_t _total_num_steps;
     uint32_t _current_step;
     PartitionID _num_flow_nodes;
-    std::vector<HypernodeWeight> _flow_matrix;
+    std::vector<std::vector<HypernodeWeight>> _move_flows;
     std::vector<HypernodeWeight> _capacity_matrix;
     std::vector<HypernodeWeight> _quotient_edge_capacities;
     std::vector<bool> _adjacency_bitmap;
