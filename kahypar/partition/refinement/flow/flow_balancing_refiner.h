@@ -95,38 +95,18 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         const HypernodeID hn = _performed_moves[last_index].hn;
         const PartitionID from_part = _performed_moves[last_index].to_part;
         const PartitionID to_part = _performed_moves[last_index].from_part;
-        updateFlow(hn, from_part, to_part, true);
+        updateFlow(hn, from_part, to_part);
         --last_index;
       }
     }
 
     void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part) {
       if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
-      _flow_vector[from_part] -= _hg.nodeWeight(hn);
-      _flow_vector[to_part] += _hg.nodeWeight(hn);
+        _flow_vector[from_part] -= _hg.nodeWeight(hn);
+        _flow_vector[to_part] += _hg.nodeWeight(hn);
       } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
-      _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
-      _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
-      //The values on the main diagonale are only really used for assertions
-      _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(hn); 
-      _flow_matrix[to_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
-      }
-    }
-
-    void updateFlow(HypernodeID hn, PartitionID from_part, PartitionID to_part, bool undo) { //TODO(fritsch) this is ugly but not a big problem
-      if (_context.local_search.fm.flow_model == BalancingFlowModel::laplace_matrix) {
-      _flow_vector[from_part] -= _hg.nodeWeight(hn);
-      _flow_vector[to_part] += _hg.nodeWeight(hn);
-      } else if (_context.local_search.fm.flow_model == BalancingFlowModel::quotient_flow) {
-      _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
-      _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
-        if (undo) {
-        _flow_matrix[to_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn);
-        _flow_matrix[from_part * _num_flow_nodes + from_part] -= _hg.nodeWeight(hn); 
-        } else {
-        _flow_matrix[to_part * _num_flow_nodes + to_part] += _hg.nodeWeight(hn);
-        _flow_matrix[from_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
-        }
+        _flow_matrix[from_part * _num_flow_nodes + to_part] -= _hg.nodeWeight(hn); 
+        _flow_matrix[to_part * _num_flow_nodes + from_part] += _hg.nodeWeight(hn);
       }
     }
 
@@ -147,7 +127,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
             outFlowAtSource += tryout_flow[from * _num_flow_nodes + block];
           }
         }
-        return inFlowAtSink == tryout_flow[from * _num_flow_nodes + from] && inFlowAtSink == outFlowAtSource;
+        return inFlowAtSink == outFlowAtSource;
       }());
       if ((2 * tryout_flow[from * _num_flow_nodes + from] >= weight)) {
         return true;
