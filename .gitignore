@@ -19,6 +19,7 @@ i10pc128/*
 i10pc129/*
 i10pc130/*
 debug2/*
+no_assert_debug/*
 partitioning_results/data/*
 tuning/*
 debug152/*
