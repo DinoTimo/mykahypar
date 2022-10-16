@@ -30,6 +30,7 @@
 #include <unordered_set>
 #include <vector>
 #include <cstdlib>
+#include <filesystem>
 
 #include "kahypar/definitions.h"
 

@@ -28,6 +28,7 @@
 #include <utility>
 #include <vector>
 #include <cmath>
+#include <filesystem>
 
 #include "gtest/gtest_prod.h"
 
@@ -48,6 +49,7 @@
 #include "kahypar/partition/refinement/policies/fm_acceptance_policy.h"
 #include "kahypar/utils/float_compare.h"
 #include "kahypar/utils/randomize.h"
+#include "kahypar/utils/timer.h"
 
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
