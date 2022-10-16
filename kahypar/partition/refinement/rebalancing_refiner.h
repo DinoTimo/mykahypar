@@ -150,8 +150,8 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   void performRebalancing(Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight currentUpperBound) {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     size_t iter = 0;
+    _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
     while(current_metrics.heaviest_block_weight > currentUpperBound && iter < _max_rebalance_iter) {
-      _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
       _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, current_metrics, refinement_nodes, currentUpperBound);
       iter++;
       ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);

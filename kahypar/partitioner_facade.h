@@ -89,10 +89,11 @@ class PartitionerFacade {
 
  private:
   void clearPreviousPartitioningData() {
-
-    const std::filesystem::path part_results_dir("../partitioning_results/data/");
-    std::filesystem::remove_all(part_results_dir);
-    std::filesystem::create_directory(part_results_dir);
+    namespace fs = std::filesystem;
+    fs::path part_results_dir(fs::current_path());
+    part_results_dir /= "partitioning_results/data/"; //this might produce different paths on windows or mac
+    fs::remove_all(part_results_dir);
+    fs::create_directory(part_results_dir);
   }
 
 
