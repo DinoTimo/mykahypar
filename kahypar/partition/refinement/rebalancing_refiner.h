@@ -101,7 +101,12 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
 
   ~RebalancingKwayKMinusOneRefiner() override {
     if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1 || _context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
-      writeVectorToFile(_rebalance_steps, "../partitioning_results/data/rebalance_steps.txt");
+      namespace fs = std::filesystem;
+      fs::path data_dir(fs::canonical("/proc/self/exe")); //this only works on linux
+      data_dir.remove_filename();
+      data_dir /= "../../../partitioning_results/data/";
+      std::string data_dir_string = data_dir.string();
+      writeVectorToFile(_rebalance_steps, data_dir_string + "rebalance_steps.txt");
     }
   }
 

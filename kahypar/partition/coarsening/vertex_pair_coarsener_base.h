@@ -171,15 +171,25 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       _target_lower_bounds.clear();
     }
     if (log_level == FileLogLevel::write_imbalance_km1 || log_level == FileLogLevel::write_imbalance_km1_target) {
-      writeVectorToFile(_km1s, "../partitioning_results/data/km1.txt");
-      writeVectorToFile(_lower_bounds, "../partitioning_results/data/lower_bounds.txt");
-      writeVectorToFile(_upper_bounds, "../partitioning_results/data/upper_bounds.txt");
-      writeVectorToFile(_standard_divs, "../partitioning_results/data/standard_divs.txt");
-      writeToFile(generalInfo(), "../partitioning_results/data/info.txt");
+      namespace fs = std::filesystem;
+      fs::path data_dir(fs::canonical("/proc/self/exe")); //this only works on linux
+      data_dir.remove_filename();
+      data_dir /= "../../../partitioning_results/data/";
+      std::string data_dir_string = data_dir.string();
+      writeVectorToFile(_km1s, data_dir_string + "km1.txt");
+      writeVectorToFile(_lower_bounds, data_dir_string + "lower_bounds.txt");
+      writeVectorToFile(_upper_bounds, data_dir_string + "upper_bounds.txt");
+      writeVectorToFile(_standard_divs, data_dir_string + "standard_divs.txt");
+      writeToFile(generalInfo(), data_dir_string + "info.txt");
     }
     if (log_level == FileLogLevel::write_imbalance_km1_target) {
-      writeVectorToFile(_target_lower_bounds, "../partitioning_results/data/target_lower_bounds.txt");
-      writeVectorToFile(_target_upper_bounds, "../partitioning_results/data/target_upper_bounds.txt");
+      namespace fs = std::filesystem;
+      fs::path data_dir(fs::canonical("/proc/self/exe")); //this only works on linux
+      data_dir.remove_filename();
+      data_dir /= "../../../partitioning_results/data/";
+      std::string data_dir_string = data_dir.string();
+      writeVectorToFile(_target_lower_bounds, data_dir_string + "target_lower_bounds.txt");
+      writeVectorToFile(_target_upper_bounds, data_dir_string + "target_upper_bounds.txt");
     }
     bool improvement_found = false;
     switch (_context.partition.objective) {

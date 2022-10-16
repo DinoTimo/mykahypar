@@ -433,7 +433,10 @@ static inline void writeFixedVertexFile(const Hypergraph& hypergraph, const std:
 }
 
 static inline int callPythonPlottingScript() {
-  std::string filename = "../partitioning_results/plotting.py";
+  std::filesystem::path path(std::filesystem::canonical("/proc/self/exe")); //this only works on linux
+  path.remove_filename();
+  path /= "../../../partitioning_results/plotting.py";
+  std::string filename = path.string();
   std::string command = "python3 ";
   command += filename;
   return system(command.c_str());

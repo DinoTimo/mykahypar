@@ -90,8 +90,9 @@ class PartitionerFacade {
  private:
   void clearPreviousPartitioningData() {
     namespace fs = std::filesystem;
-    fs::path part_results_dir(fs::current_path());
-    part_results_dir /= "partitioning_results/data/"; //this might produce different paths on windows or mac
+    fs::path part_results_dir(fs::canonical("/proc/self/exe")); //this only works on linux
+    part_results_dir.remove_filename();
+    part_results_dir /= "../../../partitioning_results/data/";
     fs::remove_all(part_results_dir);
     fs::create_directory(part_results_dir);
   }
