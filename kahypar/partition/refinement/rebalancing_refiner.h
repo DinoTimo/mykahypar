@@ -61,7 +61,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
-  static constexpr size_t _max_rebalance_iter = 15; //TODO(fritsch) kinda magic
   using GainCache = KwayGainCache<Gain>;
   using Base = FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
@@ -155,16 +154,15 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   }
 
   void performRebalancing(Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight currentUpperBound) {
-    HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
-    size_t iter = 0;
-    _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
-    while(current_metrics.heaviest_block_weight > currentUpperBound && iter < _max_rebalance_iter) {
+    ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);
+    if(current_metrics.heaviest_block_weight > currentUpperBound) {
+      HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+      _rebalance_steps.push_back(_hg.currentNumNodes() - _context.partition.k);
       _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, current_metrics, refinement_nodes, currentUpperBound);
-      iter++;
       ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);
+      HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
+      Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
     }
-    HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
-    Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
     ASSERT(current_metrics.heaviest_block_weight <= currentUpperBound);
   }
 

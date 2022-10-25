@@ -174,6 +174,10 @@ class Rebalancer {
         DBG << "No moves available for" << V(block) << " but still has weight " << _hg.partWeight(block);
         return false;
       }
+      if (excessWeight(block) <= 0) {
+        DBG << V(block) << " has been balanced and now weighs " << _hg.partWeight(block);
+        return false;
+      }
       const NodeMove move = nodeMoveFromInt(_queues[block].max());
       const Gain relativeGain = _queues[block].maxKey();
       ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)) << V(move.node));
@@ -213,9 +217,8 @@ class Rebalancer {
         _hg.changeNodePart(move.node, block, move.to_part);
         moves.push_back(Move{move.node, block, move.to_part});
         ASSERT(!_queues[block].contains(nodeMoveToInt(NodeMove{move.node, block})));
-        return true;
       }
-      return false;
+      return true;
     }
 
     void reorderOverloadedBlocks(std::vector<PartitionID>& overloaded_blocks) {
