@@ -45,7 +45,7 @@ class Rebalancer {
     _queues(),
     _queue_weights(k, 0),
     _current_upper_bound(0),
-    _adjacency_bitmap(k * (k - 1), false),
+    _adjacency_bitmap(k * (k - 1) / 2, false),
     _is_inserted_into_any_q_bitmap(hg.initialNumNodes()) { }
 
     ~Rebalancer() = default;
@@ -76,8 +76,7 @@ class Rebalancer {
         for (PartitionID block1 : _hg.connectivitySet(edge)) {
           for (PartitionID block2 : _hg.connectivitySet(edge)) {
             if (block1 == block2) continue;
-            _adjacency_bitmap[block1 * (k - 1) + block2] = true; //TODO(fritsch) optimize vector size in half and remove redundancy
-            _adjacency_bitmap[block2 * (k - 1) + block1] = true;
+            setBlocksAdjacent(block1, block2);
           }
         }
       }
@@ -129,7 +128,6 @@ class Rebalancer {
       if (!moves.empty()) {
         refiner.performMovesAndUpdateCache(moves, refinement_nodes, emptyGains);
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
-        //TODO(fritsch) update and dont fully compute again
         current_metrics.km1 = metrics::km1(_hg);
       } else {
         DBG << "No moves done";
@@ -159,7 +157,7 @@ class Rebalancer {
       }
     }
 
-    void updateOverloadedBlocks(std::vector<PartitionID>& overloaded_blocks) {
+    void updateOverloadedBlocks(std::vector<PartitionID>& overloaded_blocks) const {
       overloaded_blocks.erase(std::remove_if(overloaded_blocks.begin(), overloaded_blocks.end(), [&](PartitionID& block) {
         if (_hg.partWeight(block) <= _current_upper_bound) {
           DBG << V(block) << "has been balanced";
@@ -221,12 +219,7 @@ class Rebalancer {
       return true;
     }
 
-    void reorderOverloadedBlocks(std::vector<PartitionID>& overloaded_blocks) {
-      std::sort(overloaded_blocks.begin(), overloaded_blocks.end());
-      std::reverse(overloaded_blocks.begin(), overloaded_blocks.end());
-    }
-
-    inline bool gainChangedFor(const HypernodeID node, const PartitionID to_part, const Gain relativeGain) {
+    inline bool gainChangedFor(const HypernodeID node, const PartitionID to_part, const Gain relativeGain) const {
       Gain actualGain = gainInducedByHypergraph(node, to_part);
       Gain actualRelativeGain = (actualGain >= 0) ? actualGain * _hg.nodeWeight(node) : actualGain / _hg.nodeWeight(node);
       return actualRelativeGain != relativeGain;
@@ -284,6 +277,18 @@ class Rebalancer {
 
     std::pair<bool, std::pair<HypernodeID, Gain>> highestGainMoveToNotOverloadedBlock(HypernodeID node) const {
       return highestGainMoveToNotOverloadedBlock(node, false);
+    }
+
+    void setBlocksAdjacent(PartitionID block1, PartitionID block2) {
+      PartitionID smaller_block = std::min(block1, block2);
+      PartitionID greater_block = std::max(block1, block2);
+      _adjacency_bitmap[greater_block * (greater_block + 1) / 2 + smaller_block] = true;
+    }
+
+    bool blockAdjacency(const PartitionID block1, const PartitionID block2) const {
+      PartitionID smaller_block = std::min(block1, block2);
+      PartitionID greater_block = std::max(block1, block2);
+      return _adjacency_bitmap[greater_block * (greater_block + 1) / 2 + smaller_block];
     }
 
     std::pair<bool, std::pair<HypernodeID, Gain>> highestGainMoveToNotOverloadedBlock(HypernodeID node, bool ignore_neighbourhood) const {
