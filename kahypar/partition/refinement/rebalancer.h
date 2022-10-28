@@ -193,7 +193,7 @@ class Rebalancer {
         } else {
           DBG << "gain changed for node " << move.node << " from part " << block << " to part " << move.to_part;
         }
-        if (_hg.isBorderNode(move.node)) {
+        if (_hg.isBorderNode(move.node) || _queue_weights[block] < excessWeight(block)) {
           std::pair<bool, std::pair<PartitionID, Gain>> newMove = highestGainMoveToNotOverloadedBlock(move.node);
           PartitionID to_part = newMove.second.first;
           Gain newRelativeGain = newMove.second.second;
