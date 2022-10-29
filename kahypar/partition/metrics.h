@@ -149,7 +149,7 @@ static inline HypernodeWeight smallest_block_weight(const Hypergraph& hg) {
   return min_weight;
 }
 
-static inline double standard_deviation(const Hypergraph& hg ) {
+static inline double standard_deviation(const Hypergraph& hg) {
   double k = static_cast<double>(hg.k());
   double deviation = 0;
   double mean = static_cast<double>(hg.totalWeight()) / k;
@@ -159,6 +159,12 @@ static inline double standard_deviation(const Hypergraph& hg ) {
   deviation /= k;
   return std::pow(deviation, 0.5);
 }
+
+static inline double block_weight_to_imbalance(const HypernodeWeight& block_weight, const Hypergraph& hg, const Context& context) {
+  return static_cast<double>(block_weight) /
+         ceil(static_cast<double>(hg.totalWeight()) / context.partition.k) - 1.0;
+}
+
 
 // Hide original imbalance definition that assumes Lmax0=Lmax1=Lmax
 // This definition should only be used in assertions.

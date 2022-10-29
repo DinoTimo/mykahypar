@@ -688,7 +688,10 @@ po::options_description createLoggingOptionsDescription(Context& context,
       [&](const std::string& log_level) {
       context.logging.file_log_level = kahypar::fileLogLevelFromString(log_level);
     }),
-    "Which values are written to file");
+    "Which values are written to file")
+    ("logging-csv-file-path",
+    po::value<std::string>(&context.logging.csv_file_path)->value_name("<string>"),
+    "File where details of refinement are written");
   return logging_options;
 }
 

@@ -29,6 +29,7 @@
 #include <algorithm>
 
 #include "kahypar/meta/pack_expand.h"
+#include "kahypar/definitions.h"
 
 namespace kahypar {
 class Logger {
@@ -133,6 +134,30 @@ inline void addToFile(const std::string newContent, const std::string filePath) 
   file.open(filePath, std::ios::app);
   file << newContent;
   file.close();
+}
+
+template <typename Number, typename Number2>
+inline void writeVectorsToCSV(
+  const std::vector<Number>& num_nodes,
+  const std::vector<Number2>& km1s,
+  const std::vector<double>& imbalances, 
+  const std::vector<Number>& rebalance_steps,
+  const std::vector<double>& target_imbalances,
+  std::string file) {
+  if (! (num_nodes.size() == km1s.size() && km1s.size() == imbalances.size() && imbalances.size() == rebalance_steps.size() && rebalance_steps.size() == target_imbalances.size()) ) {
+    std::cerr << "Incorrect sizes of vectors to be plotted" << std::endl;
+    return;
+  }
+  addToFile("num_nodes,km1,imbalance,rebalance_step,target_imbalance\n", file);
+  for (size_t i = 0; i < num_nodes.size(); i++) {
+    std::stringstream s;
+    s << num_nodes[i] << ",";
+    s << km1s[i] << ",";
+    s << imbalances[i] << ",";
+    s << rebalance_steps[i] << ",";
+    s << target_imbalances[i] << "\n";
+    addToFile(s.str(), file);
+  }
 }
 
 }  // namespace kahypar

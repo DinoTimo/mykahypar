@@ -46,23 +46,31 @@ template <class PrioQueue = ds::BinaryMaxHeap<HypernodeID, RatingType> >
 class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
   static constexpr bool debug = false;
-  std::vector<double> _upper_bounds;
-  std::vector<double> _target_upper_bounds;
-  std::vector<double> _lower_bounds;
-  std::vector<double> _target_lower_bounds;
+  std::vector<HypernodeWeight> _upper_bounds;
+  std::vector<HypernodeWeight> _target_upper_bounds;
+  std::vector<HypernodeWeight> _lower_bounds;
+  std::vector<HypernodeWeight> _target_lower_bounds;
   std::vector<double> _standard_divs;
-  std::vector<double> _km1s;
-
+  std::vector<HyperedgeWeight> _km1s;
+  std::vector<HypernodeID> _rebalance_steps; //this is a duplicate to the same attribute inside the rebalancing refiner
+  std::vector<HypernodeID> _num_nodes;
+  std::vector<double> _imbalances;
+  std::vector<double> _target_imbalances;
+   
  public:
   VertexPairCoarsenerBase(Hypergraph& hypergraph, const Context& context,
                           const HypernodeWeight weight_of_heaviest_node) :
     CoarsenerBase(hypergraph, context, weight_of_heaviest_node),
-    _upper_bounds(0, 0),
-    _target_upper_bounds(0, 0),
-    _lower_bounds(0, 0),
-    _target_lower_bounds(0, 0),
-    _standard_divs(0, 0),
-    _km1s(0, 0),
+    _upper_bounds(),
+    _target_upper_bounds(),
+    _lower_bounds(),
+    _target_lower_bounds(),
+    _standard_divs(),
+    _km1s(),
+    _rebalance_steps(),
+    _num_nodes(),
+    _imbalances(),
+    _target_imbalances(),
     _pq(_hg.initialNumNodes()) { }
 
 
@@ -145,9 +153,14 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
         _lower_bounds.push_back(metrics::smallest_block_weight(_hg));
         _standard_divs.push_back(metrics::standard_deviation(_hg));
         _km1s.push_back(metrics::km1(_hg));
+        _num_nodes.push_back(_hg.currentNumNodes());
+        _imbalances.push_back(metrics::imbalance(_hg, _context));
+        _rebalance_steps.push_back(refiner.didRebalanceThisIteration() ? _hg.currentNumNodes() : 0);
+        refiner.resetRebalanceTag();
       } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
         _target_upper_bounds.push_back(refiner.currentUpperBlockWeightBound());
         _target_lower_bounds.push_back(refiner.currentLowerBlockWeightBound());
+        _target_imbalances.push_back(metrics::block_weight_to_imbalance(refiner.currentUpperBlockWeightBound(), _hg, _context));
       }
       changes.representative[0] = 0;
       changes.contraction_partner[0] = 0;
@@ -166,10 +179,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     //        << ">" << __context.partition.epsilon);
     // _context.stats.set(StatTag::LocalSearch, "finalImbalance", current_metrics.imbalance);
     FileLogLevel log_level = _context.logging.file_log_level;
-    if (log_level == FileLogLevel::write_imbalance_km1) {
-      _target_upper_bounds.clear();
-      _target_lower_bounds.clear();
-    }
     if (log_level == FileLogLevel::write_imbalance_km1 || log_level == FileLogLevel::write_imbalance_km1_target) {
       namespace fs = std::filesystem;
       fs::path data_dir(fs::canonical("/proc/self/exe")); //this only works on linux
@@ -181,6 +190,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       writeVectorToFile(_upper_bounds, data_dir_string + "upper_bounds.txt");
       writeVectorToFile(_standard_divs, data_dir_string + "standard_divs.txt");
       writeToFile(generalInfo(), data_dir_string + "info.txt");
+      writeVectorsToCSV(_num_nodes, _km1s, _imbalances, _rebalance_steps, _target_imbalances, _context.logging.csv_file_path);
     }
     if (log_level == FileLogLevel::write_imbalance_km1_target) {
       namespace fs = std::filesystem;

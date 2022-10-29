@@ -459,12 +459,14 @@ inline std::ostream& operator<< (std::ostream& str, const EvolutionaryParameters
 struct FileLoggingParameters {
   FileLogLevel file_log_level = FileLogLevel::no_file_logging; 
   bool show_diagram = false;
+  std::string csv_file_path;
 };
 
 inline std::ostream& operator<< (std::ostream& str, const FileLoggingParameters& params) {
   str << "-------------------------------------------------------------------------------" << std::endl;
   str << "  File Logging: " << params.file_log_level << std::endl;
   str << "  Show Diagram: " << params.show_diagram << std::endl;
+  str << "  path of csv file: " << params.csv_file_path << std::endl;
   str << "-------------------------------------------------------------------------------" << std::endl;
   return str;
 }

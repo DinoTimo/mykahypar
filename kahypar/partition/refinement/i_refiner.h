@@ -61,6 +61,12 @@ class IRefiner {
   virtual HypernodeWeight currentLowerBlockWeightBound() {
     return 0;
   }
+  
+  virtual bool didRebalanceThisIteration() {
+    return false;
+  }
+
+  virtual void resetRebalanceTag() { }
 
   virtual ~IRefiner() = default;
 

@@ -98,7 +98,8 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     _rebalance_execution_policy(),
     _rebalancer(hypergraph, context),
     _rebalance_steps(),
-    _step0_imbalance_set(false) { }
+    _step0_imbalance_set(false),
+    _did_rebalance_this_iteration(false) { }
 
   ~RebalancingKwayKMinusOneRefiner() override {
     if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1 || _context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
@@ -149,14 +150,23 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentUpperBlockWeightBound(_hg, _context);
   }
 
-    HypernodeWeight currentLowerBlockWeightBound() override {
+  HypernodeWeight currentLowerBlockWeightBound() override {
     return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
+  }
+
+  bool didRebalanceThisIteration() override {
+    return _did_rebalance_this_iteration;
+  }
+
+  void resetRebalanceTag() override {
+    _did_rebalance_this_iteration = false;
   }
 
   void performRebalancing(Metrics& current_metrics, std::vector<HypernodeID>& refinement_nodes, HypernodeWeight currentUpperBound) {
     ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);
     if(current_metrics.heaviest_block_weight > currentUpperBound) {
       HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
+      _did_rebalance_this_iteration = true;
       _rebalance_steps.push_back(_hg.currentNumNodes() - (_context.partition.k * _context.coarsening.contraction_limit_multiplier));
       _rebalancer.rebalance(_hg.weightOfHeaviestNode(), *this, current_metrics, refinement_nodes, currentUpperBound);
       ASSERT(metrics::heaviest_block_weight(_hg) == current_metrics.heaviest_block_weight);
@@ -1040,6 +1050,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   Rebalancer _rebalancer;
   std::vector<PartitionID> _rebalance_steps;
   bool _step0_imbalance_set;
+  bool _did_rebalance_this_iteration;
 
 };
 }  // namespace kahypar
