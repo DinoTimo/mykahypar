@@ -148,6 +148,10 @@ inline void writeVectorsToCSV(
     std::cerr << "Incorrect sizes of vectors to be plotted" << std::endl;
     return;
   }
+  if (file.empty()) {
+    std::cerr << "Invalid file";
+    return;
+  }
   addToFile("num_nodes,km1,imbalance,rebalance_step,target_imbalance\n", file);
   for (size_t i = 0; i < num_nodes.size(); i++) {
     std::stringstream s;
