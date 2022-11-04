@@ -38,7 +38,8 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _step0_imbalance_set(false),
       _total_num_steps(hypergraph.initialNumNodes() - context.partition.k),
       _current_step(0),
-      _num_flow_nodes(context.partition.k),
+      _num_flow_nodes(context.partition.k + 1),
+      _source_node(context.partition.k),
       _move_flows(0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _quotient_edge_capacities(context.partition.k * context.partition.k, 0),
@@ -108,7 +109,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         while (last_index != min_cut_index) {
           std::vector<HypernodeWeight> tryout_flow = _move_flows[last_index];
           ASSERT(tryout_flow.size() == _capacity_matrix.size(), V(tryout_flow.size()) << V(_capacity_matrix.size()));
-          for (size_t i = 0; i < tryout_flow.size(); i++) {
+          for (size_t i = 0; i < tryout_flow.size() -_num_flow_nodes; i++) {
             _capacity_matrix[i] += tryout_flow[i];
           }
           --last_index;
@@ -127,21 +128,31 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
 
   private:
     bool tryToFindFlow(PartitionID from, PartitionID to, HypernodeWeight weight) {
-      std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, from, to, false));
+      _capacity_matrix[_source_node * _num_flow_nodes + from] = weight;
+      std::vector<HypernodeWeight> tryout_flow(_flow_solver.solveFlow(_capacity_matrix, _source_node, to, false));
+      _capacity_matrix[_source_node * _num_flow_nodes + from] = 0;
       ASSERT([&]() {
         HypernodeWeight inFlowAtSink = 0;
         HypernodeWeight outFlowAtSource = 0;
+        // make sure, flow only leaves the source to the from block
         for (int block = 0; block < _num_flow_nodes ; block++) {
-          if (block != to) {
+          if (block != _source_node && block != from) {
+            if (tryout_flow[_source_node * _num_flow_nodes + block] > 0) {
+              return false;
+            }
+          }
+          if (block != to && block != _source_node) {
             inFlowAtSink += tryout_flow[block * _num_flow_nodes + to];
           }
-          if (block != from) {
+          if (block != from && block != _source_node) {
             outFlowAtSource += tryout_flow[from * _num_flow_nodes + block];
           }
         }
-        return inFlowAtSink == outFlowAtSource;
+        return inFlowAtSink == outFlowAtSource && 
+               outFlowAtSource == tryout_flow[_source_node * _num_flow_nodes + from] &&
+               tryout_flow[_source_node * _num_flow_nodes + from] == tryout_flow[from * _num_flow_nodes + from];
       }());
-      if ((2 * tryout_flow[from * _num_flow_nodes + from] >= weight)) {
+      if ((tryout_flow[_source_node * _num_flow_nodes + from] == weight)) {
         _move_flows.push_back(tryout_flow);
         return true;
       } 
@@ -248,6 +259,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     uint32_t _total_num_steps;
     uint32_t _current_step;
     PartitionID _num_flow_nodes;
+    PartitionID _source_node;
     std::vector<std::vector<HypernodeWeight>> _move_flows;
     std::vector<HypernodeWeight> _capacity_matrix;
     std::vector<HypernodeWeight> _quotient_edge_capacities;
