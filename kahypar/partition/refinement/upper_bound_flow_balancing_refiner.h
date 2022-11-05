@@ -162,7 +162,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       setStep0Values();
     }
     //save some runtime by skipping the first step if every block has one node. When every block has exactly 1 node, no move is allowed anyways.
-    uint32_t k = _context.partition.k;
+    PartitionID k = _context.partition.k;
     if (_hg.currentNumNodes() - k == 0) {
       return false;
     }
@@ -171,6 +171,13 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     _unremovable_he_parts.reset();
     FlowBase::reset();
     
+    const HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
+    const HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
+    
+    for (PartitionID block = 0; block < k; block++) {
+      Base::updatePQpartState(block, block, currentUpperBound, currentUpperBound);
+    }
+
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
     for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
@@ -188,9 +195,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     int touched_hns_since_last_improvement = 0;
     _stopping_policy.resetStatistics();
 
-    const HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
-    const HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
-    
     const double beta = log(_hg.currentNumNodes());
 
     if (_flow_execution_policy.executeFlow(_hg)) {
@@ -253,8 +257,8 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         FlowBase::updateLaplaceFlow(max_gain_node, from_part, to_part); //quotient flow update itself
         Base::updatePQpartState(from_part,
                                 to_part,
-                                _context.partition.max_part_weights[from_part],
-                                _context.partition.max_part_weights[to_part]);
+                                currentUpperBound,
+                                currentUpperBound);
 
         current_metrics.heaviest_block_weight = metrics::heaviest_block_weight(_hg);
         current_metrics.smallest_block_weight = metrics::smallest_block_weight(_hg);
@@ -454,7 +458,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       }
       if (likely(!_hg.isFixedVertex(pin))) {
         _pq.insert(pin, to_part, gain);
-        if (_hg.partWeight(to_part) < _context.partition.max_part_weights[to_part]) {
+        if (_hg.partWeight(to_part) < currentUpperBlockWeightBound()) {
           _pq.enablePart(to_part);
         }
       }
@@ -749,14 +753,14 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                     LOG << "to part =" << part;
                     return false;
                   }
-                  if (_hg.partWeight(part) < _context.partition.max_part_weights[part] &&
+                  if (_hg.partWeight(part) < currentUpperBlockWeightBound() &&
                       !_pq.isEnabled(part)) {
                     LOG << V(pin);
                     LOG << "key=" << expected_gain;
                     LOG << "Part" << part << "should be enabled as target part";
                     return false;
                   }
-                  if (_hg.partWeight(part) >= _context.partition.max_part_weights[part] &&
+                  if (_hg.partWeight(part) >= currentUpperBlockWeightBound() &&
                       _pq.isEnabled(part)) {
                     LOG << V(pin);
                     LOG << "key=" << expected_gain;
@@ -855,7 +859,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       ASSERT(!_hg.marked(pin));
       ASSERT(_hg.active(pin));
       ASSERT(_hg.isBorderNode(pin));
-      ASSERT((_hg.partWeight(part) < _context.partition.max_part_weights[part] ?
+      ASSERT((_hg.partWeight(part) < currentUpperBlockWeightBound() ?
               _pq.isEnabled(part) : !_pq.isEnabled(part)), V(part));
       // Assert that we only perform delta-gain updates on moves that are not stale!
       ASSERT(Base::hypernodeIsConnectedToPart(pin, part), V(pin) << V(part));
@@ -957,7 +961,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
                V(gainInducedByHypergraph(hn, part)));
         HEAVY_REFINEMENT_ASSERT(Base::hypernodeIsConnectedToPart(hn, part), V(hn) << V(part));
         _pq.insert(hn, part, _gain_cache.entry(hn, part));
-        if (_hg.partWeight(part) < _context.partition.max_part_weights[part]) {
+        if (_hg.partWeight(part) < currentUpperBlockWeightBound()) {
           _pq.enablePart(part);
         }
       }
