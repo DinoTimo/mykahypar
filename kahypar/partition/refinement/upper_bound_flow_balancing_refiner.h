@@ -179,7 +179,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     }
 
     Randomize::instance().shuffleVector(refinement_nodes, refinement_nodes.size());
-    for (const HypernodeID& hn : _hg.nodes()) {
+    for (const HypernodeID& hn : refinement_nodes) {
       activate<true>(hn);
     }
 
