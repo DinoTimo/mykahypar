@@ -279,16 +279,10 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
          */
         // Differentiate in between 2 modes
         bool imbalanced = current_metrics.heaviest_block_weight > currentUpperBound; 
-        if (_context.local_search.fm.use_lower_bound) {
-          imbalanced = imbalanced || (current_metrics.smallest_block_weight < currentLowerBound);
-        }
         const bool balancing = imbalanced;
         const bool refining = !balancing;
-        bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
-        if (_context.local_search.fm.use_lower_bound) {
-          improved_balance =                                            (improved_balance && current_metrics.smallest_block_weight >= best_metrics.smallest_block_weight)
-          || (current_metrics.heaviest_block_weight == best_metrics.heaviest_block_weight && current_metrics.smallest_block_weight >  best_metrics.smallest_block_weight);
-        }
+        const bool improved_balance = _hg.partWeight(from_part) + _hg.nodeWeight(max_gain_node) > currentUpperBound 
+                                    || current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
         const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
         const bool improved_balance_within_km1_tolerance = improved_balance && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
         // kahypar
