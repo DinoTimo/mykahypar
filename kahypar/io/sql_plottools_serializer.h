@@ -67,6 +67,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << " timeout=" << (context.partition.time_limit_triggered ? "yes" : "no")
       << " numHNs=" << hypergraph.initialNumNodes()
       << " numHEs=" << hypergraph.initialNumEdges()
+      << " numComponents=" << metrics::amountConnectedComponents(hypergraph)
       << " " << hypergraph.typeAsString();
   if (!context.partition.fixed_vertex_filename.empty()) {
     oss << " fixed_vertex_file=" << context.partition.fixed_vertex_filename.substr(context.partition.fixed_vertex_filename.find_last_of('/') + 1)
