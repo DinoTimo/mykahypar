@@ -252,7 +252,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       if (_context.local_search.fm.use_lower_bound) {
           dont_overload_to_part = dont_overload_to_part && (_hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound);
       }
-      if (!emptying_block && dont_overload_to_part && FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node)) {
+      if (max_gain != current_metrics.km1 && !emptying_block && dont_overload_to_part && FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node)) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         FlowBase::updateLaplaceFlow(max_gain_node, from_part, to_part); //quotient flow update itself
         Base::updatePQpartState(from_part,
@@ -278,18 +278,12 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
          * or T <= W^i && W^i < W-
          */
         // Differentiate in between 2 modes
-        bool imbalanced = current_metrics.heaviest_block_weight > currentUpperBound; 
-        const bool balancing = imbalanced;
-        const bool refining = !balancing;
+        
         const bool improved_balance = _hg.partWeight(from_part) + _hg.nodeWeight(max_gain_node) > currentUpperBound 
                                     || current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
         const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
-        const bool improved_balance_within_km1_tolerance = improved_balance && initial_metrics.km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1;
         // kahypar
-        const bool improved_balance_less_equal_km1  = improved_balance && current_metrics.km1 <= best_metrics.km1;
-        const bool improved_km1_within_balance      = improved_km1     && !imbalanced;
-        if (  (balancing && (improved_km1_within_balance || improved_balance_less_equal_km1 || improved_balance_within_km1_tolerance))
-          ||  (refining  && (improved_km1_within_balance || improved_balance_less_equal_km1)) ) { 
+        if (improved_km1 || (improved_balance && current_metrics.km1 == best_metrics.km1) || (improved_balance && current_metrics.heaviest_block_weight > currentUpperBound)) { 
           best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
