@@ -172,7 +172,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     FlowBase::reset();
     
     const HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
-    const HypernodeWeight currentLowerBound = currentLowerBlockWeightBound();
     
     for (PartitionID block = 0; block < k; block++) {
       Base::updatePQpartState(block, block, currentUpperBound, currentUpperBound);
@@ -249,9 +248,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
        */      
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node);
       bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
-      if (_context.local_search.fm.use_lower_bound) {
-          dont_overload_to_part = dont_overload_to_part && (_hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBound);
-      }
       if (max_gain != current_metrics.km1 && !emptying_block && dont_overload_to_part && FlowBase::moveFeasibilityByFlow(from_part, to_part, max_gain_node)) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
         FlowBase::updateLaplaceFlow(max_gain_node, from_part, to_part); //quotient flow update itself
@@ -282,8 +278,10 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         const bool improved_balance = _hg.partWeight(from_part) + _hg.nodeWeight(max_gain_node) > currentUpperBound 
                                     || current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
         const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
+        //const bool first_achieved_balance = best_metrics.heaviest_block_weight >  && current_metrics.heaviest_block_weight <= currentUpperBound;
         // kahypar
-        if (improved_km1 || (improved_balance && current_metrics.km1 == best_metrics.km1) || (improved_balance && current_metrics.heaviest_block_weight > currentUpperBound)) { 
+        if (improved_km1 ||
+           (improved_balance && (current_metrics.km1 <= best_metrics.km1 || current_metrics.heaviest_block_weight > FlowBase::idealBlockWeight() * (1.0 + _context.partition.epsilon)))) { 
           best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
