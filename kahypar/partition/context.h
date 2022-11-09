@@ -584,8 +584,6 @@ inline std::ostream& operator<< (std::ostream& str, const Context& context) {
 static inline void checkRecursiveBisectionMode(RefinementAlgorithm& algo) {
   if (algo == RefinementAlgorithm::kway_fm ||
       algo == RefinementAlgorithm::kway_fm_km1 ||
-      algo == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
-      algo == RefinementAlgorithm::rebalancing_kway_fm_km1 ||
       algo == RefinementAlgorithm::kway_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter ||
       algo == RefinementAlgorithm::kway_fm_hyperflow_cutter_km1) {
