@@ -6,7 +6,6 @@ import numpy as np
 path = "/home/timo/Coding/mykahypar/partitioning_results/data/"
 km1path = path + "km1.txt"
 lowerpath = path + "lower_bounds.txt"
-targetlowerpath = path + "target_lower_bounds.txt"
 upperpath = path + "upper_bounds.txt"
 targetupperpath = path + "target_upper_bounds.txt"
 infopath = path + "info.txt"
@@ -43,15 +42,15 @@ def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfi
 #Expecting the following format for imbalance.txt: one value per line
 #Expecting the following format for target_imbalances.txt: one value per line
 def showImbalance():
-  showActualAndTarget(lowerpath, 'smallest block weight', targetlowerpath, 'target smallest block', False)
   showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
   
-  standard_divs = readLines(standarddivspath)
-  plt.plot(floatify(standard_divs), color='y', label='standard deviation')
+  #standard_divs = readLines(standarddivspath)
+  #plt.plot(floatify(standard_divs), color='y', label='standard deviation')
 
   rebalancesteps = floatify(readLines(rebalancestepspath))
   if (len(rebalancesteps) != 0):
-    plt.vlines(rebalancesteps, 0, floatify(readLines(targetupperpath))[0], 'g', 'dashed', 'rebalance steps')
+    uppers = floatify(readLines(targetupperpath))
+    plt.vlines(rebalancesteps, uppers[len(uppers) - 1], uppers[0], 'g', 'dashed', 'rebalance steps')
   plt.legend()
   infoLines = readLines(infopath)
   if (len(infoLines) > 3):
@@ -82,7 +81,7 @@ def showKm1():
 
   rebalancesteps = floatify(readLines(rebalancestepspath))
   if (len(rebalancesteps) != 0):
-    plt.vlines(rebalancesteps, 0, max(km1lines), 'g', 'dashed', 'rebalance steps')
+    plt.vlines(rebalancesteps, min(km1lines), max(km1lines), 'g', 'dashed', 'rebalance steps')
 
   plt.title('km1 goal - minimize')
   plt.plot(km1lines, color='b', label='km1')

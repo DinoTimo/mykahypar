@@ -64,7 +64,6 @@ class FlowAcceptancePolicy : public meta::PolicyBase {
       double raw_ideal_weight = static_cast<double>(hg.totalWeight()) / static_cast<double>(context.partition.k);
       _ideal_block_weight = static_cast<HypernodeWeight>(raw_ideal_weight);
       _final_upper_bound = raw_ideal_weight * (1.0 + context.partition.epsilon);
-      _final_lower_bound = raw_ideal_weight * (1.0 - (context.local_search.fm.lower_bound_multiplier * context.partition.epsilon));
     }
   
 };
@@ -108,26 +107,6 @@ class BalanceApproachingAcceptancePolicy : public FlowAcceptancePolicy {
       ASSERT(bound >= _final_upper_bound);
       return bound;
     }
-
-    HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      if (_step0_smallest_block_weight >= _final_lower_bound) {
-        return _final_lower_bound;
-      }
-      double x = static_cast<double>(hypergraph.currentNumNodes() - _step0_num_nodes);
-      double b = static_cast<double>(hypergraph.initialNumNodes() - _step0_num_nodes) * (1 - context.local_search.fm.balance_convergence_time);
-      if (x >= b) {
-        return _final_lower_bound;
-      }
-      double c = static_cast<double>(_final_lower_bound - _step0_smallest_block_weight);
-      ASSERT(b != 0, "Divide by zero error");
-      double a = (- c) / std::pow(-b, context.local_search.fm.balance_convergence_speed);
-      double value = std::pow(x - b, context.local_search.fm.balance_convergence_speed);
-      double prebound = a * value + c;
-      double bound = prebound + _step0_smallest_block_weight;
-      ASSERT(bound <= _final_lower_bound);
-      ASSERT(bound >= 0, V(value));
-      return bound;
-    }
 };
 
 
@@ -155,28 +134,6 @@ class ImbalanceHoldingAcceptancePolicy : public FlowAcceptancePolicy {
       double tan = tanh(b * (x - c));
       double value = a * tan + d;
       ASSERT(value >= _final_upper_bound, V(value));
-      return value;
-    }
-    
-    HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      if (_step0_smallest_block_weight >= _final_lower_bound) {
-        return _final_lower_bound;
-      }
-      //use shifted and stretched tanh:
-      // f(x) = a * tanh(b * (x - c)) + d
-      // a and d are parameters deriving from the initial hypergraph imbalance at step0 (first refinement step, right after finish of contraction) and the final bound
-      // b and c are hyperparameters tuneable via .ini files
-      // x is the current step  in refinement phase
-      double x = static_cast<double>(hypergraph.currentNumNodes() - _step0_num_nodes);
-      double b = 0.0005 * context.local_search.fm.balance_convergence_speed; //must be positive
-      double c = context.local_search.fm.balance_convergence_time * hypergraph.initialNumNodes(); //must be positive
-      double a = static_cast<double>(_final_lower_bound - _step0_smallest_block_weight) / 2.0;
-      double d = _final_lower_bound - a;
-      //for large large x >> c it should hold: f(x) == _final_lower_bound
-      double tan = tanh(b * (x - c));
-      double value = a * tan + d;
-      ASSERT(value <= _final_lower_bound);
-      ASSERT(value >= 0, V(value));
       return value;
     }
 
@@ -221,10 +178,6 @@ class StaircaseAcceptancePolicy : public FlowAcceptancePolicy {
       }
       return closestEntry(_balance_approaching_policy.currentUpperBlockWeightBound(hypergraph, context), _imbalance_steps);
     }
-    
-    HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      return 2 * _ideal_block_weight - currentUpperBlockWeightBound(hypergraph, context);
-    }
   
   private:
     template <typename NumberType>
@@ -258,10 +211,6 @@ class HeaviestNodePolicy : public FlowAcceptancePolicy {
     HypernodeWeight currentUpperBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
       return std::max(static_cast<double>(_final_upper_bound), std::max((1.0 + context.partition.epsilon) * static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k),
                                                     hypergraph.weightOfHeaviestNode() + static_cast<double>(hypergraph.totalWeight()) / static_cast<double>(context.partition.k)));
-    }
-
-    HypernodeWeight currentLowerBlockWeightBound(Hypergraph& hypergraph, const Context& context) {
-      return 2 * _ideal_block_weight - currentUpperBlockWeightBound(hypergraph, context);
     }
 };
 

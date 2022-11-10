@@ -41,7 +41,6 @@
 #include "kahypar/meta/template_parameter_to_string.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
-#include "kahypar/partition/refinement/flow/policies/flow_execution_policy.h"
 #include "kahypar/partition/refinement/fm_refiner_base.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/partition/refinement/kway_fm_gain_cache.h"
@@ -53,19 +52,18 @@
 
 namespace kahypar {
 template <class StoppingPolicy = Mandatory,
-          class FlowExecutionPolicy = Mandatory,
           class AcceptancePolicy = Mandatory,
           class FMImprovementPolicy = CutDecreasedOrInfeasibleImbalanceDecreased>
 class RebalancingKwayKMinusOneRefiner final : public IRefiner,
-          private FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy, FMImprovementPolicy>>{
+          private FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, AcceptancePolicy, FMImprovementPolicy>>{
  private:
   static constexpr bool enable_heavy_assert = false;
   static constexpr bool debug = false;
   using GainCache = KwayGainCache<Gain>;
-  using Base = FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  using Base = FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
-  friend class FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, FlowExecutionPolicy, AcceptancePolicy,
+  friend class FMRefinerBase<RollbackInfo, RebalancingKwayKMinusOneRefiner<StoppingPolicy, AcceptancePolicy,
                                                                 FMImprovementPolicy> >;
 
   using HEState = typename Base::HEState;
@@ -95,7 +93,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
     _gain_cache(_hg.initialNumNodes(), _context.partition.k),
     _stopping_policy(),
     _acceptance_policy(),
-    _rebalance_execution_policy(),
     _rebalancer(hypergraph, context),
     _rebalance_steps(),
     _step0_imbalance_set(false),
@@ -132,7 +129,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       _pq.initialize(_hg.initialNumNodes());
 #endif
       _rebalancer.initialize();
-      _rebalance_execution_policy.initialize(_hg, _context);
       _is_initialized = true;
     }
     _gain_cache.clear();
@@ -148,10 +144,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
 
   HypernodeWeight currentUpperBlockWeightBound() override {
     return _acceptance_policy.currentUpperBlockWeightBound(_hg, _context);
-  }
-
-  HypernodeWeight currentLowerBlockWeightBound() override {
-    return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
   }
 
   bool didRebalanceThisIteration() override {
@@ -191,15 +183,12 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       setStep0Values();
     }
     //save some runtime by skipping the first step if every block has one node. When every block has exactly 1 node, no move is allowed anyways.
-    uint32_t k = _context.partition.k;
-    if (_hg.currentNumNodes() - k == 0) {
+    if (_hg.currentNumNodes() - _context.partition.k == 0) {
       return false;
     }
 
     HypernodeWeight currentUpperBound = currentUpperBlockWeightBound();
-    if (best_metrics.heaviest_block_weight > currentUpperBound && _rebalance_execution_policy.executeFlow(_hg)) {
-      //By reordering the arguemnts a different behaviour is possible due to lazyness and the un-constness of the executeFlow method.
-      //This behaviour is currently desired this way
+    if (best_metrics.heaviest_block_weight > currentUpperBound) {
       DBG << "Starting rebalancing, current imbalance = " << best_metrics.heaviest_block_weight << ", upper bound = " << currentUpperBound;
       performRebalancing(best_metrics, refinement_nodes, currentUpperBound);
       DBG << "Finished rebalancing with " << _hg.currentNumNodes() << " current nodes and imbalance " << best_metrics.heaviest_block_weight << "\n\n";
@@ -272,10 +261,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
        * km1 improved || balance improved, km1 equal    and
        * q does not become overloaded
        */
-      bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
-      if (_context.local_search.fm.use_lower_bound) {
-          dont_overload_to_part = dont_overload_to_part && (_hg.partWeight(from_part) - _hg.nodeWeight(max_gain_node) >= currentLowerBlockWeightBound());
-      }
+      const bool dont_overload_to_part = _hg.nodeWeight(max_gain_node) + _hg.partWeight(to_part) <= currentUpperBound;
       const bool emptying_block = _hg.partWeight(from_part) == _hg.nodeWeight(max_gain_node); 
       if (!emptying_block && dont_overload_to_part) {
         Base::moveHypernode(max_gain_node, from_part, to_part);
@@ -297,12 +283,8 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
 
         updateNeighbours(max_gain_node, from_part, to_part);
 
-        bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight;
-        if (_context.local_search.fm.use_lower_bound) {
-          improved_balance =                                            (improved_balance && current_metrics.smallest_block_weight >= best_metrics.smallest_block_weight)
-          || (current_metrics.heaviest_block_weight == best_metrics.heaviest_block_weight && current_metrics.smallest_block_weight >  best_metrics.smallest_block_weight);
-        }
-        
+        const bool improved_balance = current_metrics.heaviest_block_weight < best_metrics.heaviest_block_weight || 
+              _hg.partWeight(from_part) + _hg.nodeWeight(max_gain_node) > currentUpperBound;        
         const bool improved_km1 = current_metrics.km1 < best_metrics.km1;
         const bool improved_balance_less_equal_km1 = improved_balance && current_metrics.km1 <= best_metrics.km1;
         if (improved_km1 || improved_balance_less_equal_km1) { 
@@ -328,7 +310,7 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
               }
             }
           }
-          _unremovable_he_parts.set(static_cast<size_t>(he) * k + from_part, 1);
+          _unremovable_he_parts.set(static_cast<size_t>(he) * _context.partition.k + from_part, 1);
         }
       }
     }
@@ -1046,7 +1028,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
   GainCache _gain_cache;
   StoppingPolicy _stopping_policy;
   AcceptancePolicy _acceptance_policy;
-  RebalancerExecution _rebalance_execution_policy;
   Rebalancer _rebalancer;
   std::vector<PartitionID> _rebalance_steps;
   bool _step0_imbalance_set;

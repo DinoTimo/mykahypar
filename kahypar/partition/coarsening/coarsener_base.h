@@ -167,7 +167,6 @@ class CoarsenerBase {
           (current_metrics.km1                    <= old_km1), 
            V(current_metrics.cut) << V(old_cut) << V(current_metrics.cut)
                                   << V(current_metrics.km1) << V(old_km1));
-    ASSERT(_context.local_search.algorithm != RefinementAlgorithm::flow_balancing_kway_fm_km1 || old_km1 * _context.local_search.fm.km1_increase_tolerance >= current_metrics.km1, V(old_km1) << V(current_metrics.km1));
     DBGC(_context.partition.objective == Objective::cut) << old_cut << "-->" << current_metrics.cut;
     DBGC(_context.partition.objective == Objective::km1) << old_km1 << "-->" << current_metrics.km1;
     return improvement_found;

@@ -58,10 +58,6 @@ class IRefiner {
     return 0;
   }
 
-  virtual HypernodeWeight currentLowerBlockWeightBound() {
-    return 0;
-  }
-  
   virtual bool didRebalanceThisIteration() {
     return false;
   }

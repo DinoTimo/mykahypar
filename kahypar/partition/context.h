@@ -193,13 +193,10 @@ struct LocalSearchParameters {
     double adaptive_stopping_alpha = std::numeric_limits<double>::max();
     double balance_convergence_speed = std::numeric_limits<double>::max();
     double balance_convergence_time = std::numeric_limits<double>::max();
-    double lower_bound_multiplier = 1;
     double km1_increase_tolerance = std::numeric_limits<double>::max();
     RefinementStoppingRule stopping_rule = RefinementStoppingRule::UNDEFINED;
     BalancingFlowModel flow_model = BalancingFlowModel::UNDEFINED; 
-    bool use_lower_bound = false;
     size_t num_staircase_steps = 1;
-    RebalancerType rebalancing_order_policy = RebalancerType::UNDEFINED; 
   };
 
   struct Flow {
@@ -254,14 +251,7 @@ inline std::ostream& operator<< (std::ostream& str, const LocalSearchParameters&
     str << "    balance convergence time:         " << params.fm.balance_convergence_time << std::endl;
     if (params.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {    
       str << "    km1 increase tolerance:           " << params.fm.km1_increase_tolerance << std::endl;
-      str << "    use lower bound:                  " << params.fm.use_lower_bound << std::endl;
-      if (params.fm.use_lower_bound) {
-        str << "    lower bound multiplier:           " << params.fm.lower_bound_multiplier << std::endl;
-      }
       str << "    flow model:                       " << params.fm.flow_model << std::endl;
-    }
-    if (params.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {    
-      str << "    rebalancing order policy:         " << params.fm.rebalancing_order_policy << std::endl;
     }
 
   }

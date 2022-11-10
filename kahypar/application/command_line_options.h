@@ -400,16 +400,6 @@ po::options_description createRefinementOptionsDescription(Context& context,
       }
     }),
     "Balancing flow for refinement")
-    ((initial_partitioning ? "i-r-fm-rebalancer-type" : "r-fm-rebalancer-type"),
-    po::value<std::string>()->value_name("<string>")->notifier(
-      [&context, initial_partitioning](const std::string& order_policy) {
-      if (initial_partitioning) {
-        context.initial_partitioning.local_search.fm.rebalancing_order_policy = kahypar::rebalancerTypeFromString(order_policy);
-      } else {
-        context.local_search.fm.rebalancing_order_policy = kahypar::rebalancerTypeFromString(order_policy);
-      }
-    }),
-    "Type of rebalancer used with rebalancing refiner")
     ((initial_partitioning ? "i-r-fm-stop-i" : "r-fm-stop-i"),
     po::value<uint32_t>((initial_partitioning ? &context.initial_partitioning.local_search.fm.max_number_of_fruitless_moves : &context.local_search.fm.max_number_of_fruitless_moves))->value_name("<uint32_t>"),
     "Max. # fruitless moves before stopping local search using simple stopping rule")
@@ -423,12 +413,6 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-km1-increase-tolerance" : "r-fm-km1-increase-tolerance"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.km1_increase_tolerance : &context.local_search.fm.km1_increase_tolerance))->value_name("<double>"),
     "Parameter on how much the km1 goal might be worsenend to ensure balanced solutions")
-   ((initial_partitioning ? "i-r-fm-use-lower-bound" : "r-fm-use-lower-bound"),
-    po::value<bool>((initial_partitioning ? &context.initial_partitioning.local_search.fm.use_lower_bound : &context.local_search.fm.use_lower_bound))->value_name("<bool>"),
-    "Parameter deciding if a lower bound is used during fm")
-   ((initial_partitioning ? "i-r-fm-lower-bound-multiplier" : "r-fm-lower-bound-multiplier"),
-    po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.lower_bound_multiplier : &context.local_search.fm.lower_bound_multiplier))->value_name("<double>"),
-    "Parameter defining the final lower bound")
    ((initial_partitioning ? "i-r-fm-balance-convergence-time" : "r-fm-balance-convergence-time"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_time : &context.local_search.fm.balance_convergence_time))->value_name("<double>"),
     "Parameter for after how many steps the partition must fulfill the balance constraint");

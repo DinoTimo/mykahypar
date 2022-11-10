@@ -20,7 +20,6 @@ const static size_t k = 4;
 
 class ARebalancer : public Test {
   using ThisRefiner = RebalancingKwayKMinusOneRefiner<AdvancedRandomWalkModelStopsSearch,
-                                  MultilevelFlowExecution,
                                   BalanceApproachingAcceptancePolicy>;
   public:
     ARebalancer() :
@@ -29,7 +28,6 @@ class ARebalancer : public Test {
     _context(),
     _refiner(nullptr) {
       _context.partition.k = k;
-      _context.local_search.fm.rebalancing_order_policy = RebalancerType::round_robin;
       _context.local_search.algorithm = RefinementAlgorithm::rebalancing_kway_fm_km1;
       _hypergraph->setNodePart(0, 0);
       _hypergraph->setNodePart(1, 1);

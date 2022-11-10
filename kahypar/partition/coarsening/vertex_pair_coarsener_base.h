@@ -49,7 +49,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
   std::vector<HypernodeWeight> _upper_bounds;
   std::vector<HypernodeWeight> _target_upper_bounds;
   std::vector<HypernodeWeight> _lower_bounds;
-  std::vector<HypernodeWeight> _target_lower_bounds;
   std::vector<double> _standard_divs;
   std::vector<HyperedgeWeight> _km1s;
   std::vector<HypernodeID> _rebalance_steps; //this is a duplicate to the same attribute inside the rebalancing refiner
@@ -64,7 +63,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     _upper_bounds(),
     _target_upper_bounds(),
     _lower_bounds(),
-    _target_lower_bounds(),
     _standard_divs(),
     _km1s(),
     _rebalance_steps(),
@@ -159,7 +157,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
         refiner.resetRebalanceTag();
       } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
         _target_upper_bounds.push_back(refiner.currentUpperBlockWeightBound());
-        _target_lower_bounds.push_back(refiner.currentLowerBlockWeightBound());
         _target_imbalances.push_back(metrics::block_weight_to_imbalance(refiner.currentUpperBlockWeightBound(), _hg, _context));
       }
       changes.representative[0] = 0;
@@ -198,7 +195,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       data_dir.remove_filename();
       data_dir /= "../../../partitioning_results/data/";
       std::string data_dir_string = data_dir.string();
-      writeVectorToFile(_target_lower_bounds, data_dir_string + "target_lower_bounds.txt");
       writeVectorToFile(_target_upper_bounds, data_dir_string + "target_upper_bounds.txt");
     }
     bool improvement_found = false;
@@ -236,12 +232,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     infos.push_back("e = " + std::to_string(_context.partition.epsilon));
     RefinementAlgorithm refinement_algo = _context.local_search.algorithm;
     bool custom_algo = false;
-    if (refinement_algo == RefinementAlgorithm::rebalancing_kway_fm_km1) {
-      std::stringstream s;
-      s << _context.local_search.fm.rebalancing_order_policy;
-      infos.push_back("rebalancing order = " + s.str());
-      custom_algo = true;
-    }
     if (refinement_algo == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
       std::stringstream s;
       s << _context.local_search.fm.flow_model;
@@ -255,10 +245,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
       infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
-      infos.push_back("use lower bound = " + std::to_string(_context.local_search.fm.use_lower_bound));
-      if (_context.local_search.fm.use_lower_bound) {
-        infos.push_back("lower bound multiplier = " + std::to_string(_context.local_search.fm.lower_bound_multiplier));
-      }
       infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
     }
     return joinVector(infos, "", "\n", "");

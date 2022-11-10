@@ -99,27 +99,6 @@ class MultilevelFlowExecution : public FlowExecutionPolicy<MultilevelFlowExecuti
   using FlowExecutionPolicy::_flow_execution_levels;
 };
 
-
-class RebalancerExecution : public FlowExecutionPolicy<RebalancerExecution>{
- public:
-  RebalancerExecution() :
-    FlowExecutionPolicy() { }
-
-  void initializeImpl(const Hypergraph& hg, const Context& context) {
-    //we want the last level to be at (1 - convergence_time) * num total levels
-    std::vector<size_t> tmp_flow_execution_levels;
-    for (size_t i = 0; hg.initialNumNodes() / std::pow(2, i) >= hg.currentNumNodes(); ++i) {
-      tmp_flow_execution_levels.push_back((1 - context.local_search.fm.balance_convergence_time) * hg.initialNumNodes() / std::pow(2, i));
-    }
-    _flow_execution_levels.insert(_flow_execution_levels.end(),
-                                  tmp_flow_execution_levels.begin(),
-                                  tmp_flow_execution_levels.end());
-  }
-
- private:
-  using FlowExecutionPolicy::_flow_execution_levels;
-};
-
 class ExponentialFlowExecution : public FlowExecutionPolicy<ExponentialFlowExecution>{
  public:
   ExponentialFlowExecution() :

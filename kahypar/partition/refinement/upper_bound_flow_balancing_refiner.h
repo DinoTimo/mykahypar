@@ -141,10 +141,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
     return _acceptance_policy.currentUpperBlockWeightBound(_hg, _context);
   }
 
-  HypernodeWeight currentLowerBlockWeightBound() override { 
-    return _acceptance_policy.currentLowerBlockWeightBound(_hg, _context);
-  }
-
   void setStep0Values() {
     HypernodeWeight step0_smallest_block_weight = metrics::smallest_block_weight(_hg);
     HypernodeWeight step0_heaviest_block_weight = metrics::heaviest_block_weight(_hg);
@@ -240,7 +236,6 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
       _hg.mark(max_gain_node);
       ++touched_hns_since_last_improvement;
       ASSERT(currentUpperBound >= FlowBase::idealBlockWeight(), V(currentUpperBound));
-      ASSERT(currentLowerBound <= FlowBase::idealBlockWeight(), V(currentLowerBound));
       /**
        * Move of vertex v from part p to part q is feasible if:
        * ( heaviest domain weight > target weight && 2F_pq > weight(v) ) or

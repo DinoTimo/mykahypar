@@ -64,6 +64,8 @@ using RatingPolicies = meta::Typelist<RatingScorePolicies, HeavyNodePenaltyPolic
 
 using FlowRefiningPolicies = meta::Typelist<StoppingPolicyClasses, FlowExecutionPolicyClasses, FlowAcceptancePolicyClasses>;
 
+using RebalancingPolicies = meta::Typelist<StoppingPolicyClasses, FlowAcceptancePolicyClasses>;
+
 
 using MLCoarseningDispatcher = meta::StaticMultiDispatchFactory<MLCoarsener,
                                                                 ICoarsener,
@@ -95,7 +97,7 @@ using FlowBalancingKWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFac
 
 using RebalancingKWayKMinusOneFactoryDispatcher = meta::StaticMultiDispatchFactory<RebalancingKwayKMinusOneRefiner,
                                                                         IRefiner,
-                                                                        FlowRefiningPolicies>;
+                                                                        RebalancingPolicies>;
 
 using TwoWayHyperFlowCutterFactoryDispatcher = meta::StaticMultiDispatchFactory<TwoWayHyperFlowCutterRefiner,
                                                                                 IRefiner,
