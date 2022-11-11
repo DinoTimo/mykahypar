@@ -22,8 +22,8 @@
 
 #include "gmock/gmock.h"
 
-#include "kahypar/datastructure/hypergraph.h"
 #include "kahypar/definitions.h"
+#include "kahypar/datastructure/hypergraph.h"
 #include "kahypar/partition/evolutionary/individual.h"
 #include "kahypar/partition/metrics.h"
 
