@@ -209,7 +209,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
         << " balance_convergence_time=" << context.local_search.fm.balance_convergence_time
         << " acceptance_policy=" << context.local_search.flow.acceptance_policy;
     if (context.local_search.flow.acceptance_policy == AcceptanceRule::staircase) {
-      oss << " num staircase steps=" << context.local_search.fm.num_staircase_steps;
+      oss << " num_staircase_steps=" << context.local_search.fm.num_staircase_steps;
     }
     oss << " flow_execution_policy=" << context.local_search.flow.execution_policy;
     if (context.local_search.flow.execution_policy == FlowExecutionMode::constant) {
