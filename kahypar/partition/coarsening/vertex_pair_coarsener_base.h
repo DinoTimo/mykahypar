@@ -40,18 +40,15 @@
 #include "kahypar/utils/progress_bar.h"
 #include "kahypar/utils/randomize.h"
 #include "kahypar/utils/time_limit.h"
+#include "kahypar/io/hypergraph_io.h"
 
 namespace kahypar {
 template <class PrioQueue = ds::BinaryMaxHeap<HypernodeID, RatingType> >
 class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
   static constexpr bool debug = false;
-  std::vector<HypernodeWeight> _upper_bounds;
-  std::vector<HypernodeWeight> _target_upper_bounds;
-  std::vector<HypernodeWeight> _lower_bounds;
-  std::vector<double> _standard_divs;
   std::vector<HyperedgeWeight> _km1s;
-  std::vector<HypernodeID> _rebalance_steps; //this is a duplicate to the same attribute inside the rebalancing refiner
+  std::vector<int32_t> _rebalance_steps; //this is a duplicate to the same attribute inside the rebalancing refiner
   std::vector<HypernodeID> _num_nodes;
   std::vector<double> _imbalances;
   std::vector<double> _target_imbalances;
@@ -60,10 +57,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
   VertexPairCoarsenerBase(Hypergraph& hypergraph, const Context& context,
                           const HypernodeWeight weight_of_heaviest_node) :
     CoarsenerBase(hypergraph, context, weight_of_heaviest_node),
-    _upper_bounds(),
-    _target_upper_bounds(),
-    _lower_bounds(),
-    _standard_divs(),
     _km1s(),
     _rebalance_steps(),
     _num_nodes(),
@@ -147,16 +140,12 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       CoarsenerBase::performLocalSearch(refiner, refinement_nodes, current_metrics, changes);
       if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target || 
           _context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
-        _upper_bounds.push_back(metrics::heaviest_block_weight(_hg));
-        _lower_bounds.push_back(metrics::smallest_block_weight(_hg));
-        _standard_divs.push_back(metrics::standard_deviation(_hg));
         _km1s.push_back(metrics::km1(_hg));
         _num_nodes.push_back(_hg.currentNumNodes());
         _imbalances.push_back(metrics::imbalance(_hg, _context));
-        _rebalance_steps.push_back(refiner.didRebalanceThisIteration() ? _hg.currentNumNodes() : 0);
+        _rebalance_steps.push_back(refiner.didRebalanceThisIteration() ? _hg.currentNumNodes() : -1);
         refiner.resetRebalanceTag();
       } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
-        _target_upper_bounds.push_back(refiner.currentUpperBlockWeightBound());
         _target_imbalances.push_back(metrics::block_weight_to_imbalance(refiner.currentUpperBlockWeightBound(), _hg, _context));
       }
       changes.representative[0] = 0;
@@ -182,20 +171,11 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       data_dir.remove_filename();
       data_dir /= "../../../partitioning_results/data/";
       std::string data_dir_string = data_dir.string();
-      writeVectorToFile(_km1s, data_dir_string + "km1.txt");
-      writeVectorToFile(_lower_bounds, data_dir_string + "lower_bounds.txt");
-      writeVectorToFile(_upper_bounds, data_dir_string + "upper_bounds.txt");
-      writeVectorToFile(_standard_divs, data_dir_string + "standard_divs.txt");
       writeToFile(generalInfo(), data_dir_string + "info.txt");
       writeVectorsToCSV(_num_nodes, _km1s, _imbalances, _rebalance_steps, _target_imbalances, _context.logging.csv_file_path);
     }
-    if (log_level == FileLogLevel::write_imbalance_km1_target) {
-      namespace fs = std::filesystem;
-      fs::path data_dir(fs::canonical("/proc/self/exe")); //this only works on linux
-      data_dir.remove_filename();
-      data_dir /= "../../../partitioning_results/data/";
-      std::string data_dir_string = data_dir.string();
-      writeVectorToFile(_target_upper_bounds, data_dir_string + "target_upper_bounds.txt");
+    if (_context.logging.show_diagram) {
+      io::callPythonPlottingScript();
     }
     bool improvement_found = false;
     switch (_context.partition.objective) {
@@ -244,7 +224,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       infos.push_back("upper bound = " + s.str());
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
-      infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
       infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
     }
     return joinVector(infos, "", "\n", "");

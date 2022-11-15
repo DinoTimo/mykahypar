@@ -1,24 +1,30 @@
-import readline
-from xml.dom.expatbuilder import parseString
 import matplotlib.pyplot as plt
-import numpy as np
+import pandas as pd
 
 path = "/home/timo/Coding/mykahypar/partitioning_results/data/"
-km1path = path + "km1.txt"
-lowerpath = path + "lower_bounds.txt"
-upperpath = path + "upper_bounds.txt"
-targetupperpath = path + "target_upper_bounds.txt"
 infopath = path + "info.txt"
 resultspath = path + "other_results.txt"
-standarddivspath = path + "standard_divs.txt"
-rebalancestepspath = path + "rebalance_steps.txt"
 
 def main():
+  df = pd.read_csv('/home/timo/Coding/test.csv', delimiter=',')
+  num_nodes = df['num_nodes'].to_list()
+  target_imbalances = []
+  try:
+    target_imbalances = df['target_imbalance'].to_list()
+  except:
+    target_imbalances = []
+  imbalances = df['imbalance'].to_list()
+  km1s = df['km1'].to_list()
+  rebalance_steps = df['rebalance_step'].to_list()
+  rebalance_steps = list(filter(lambda step: step >= 0, rebalance_steps))
   plt.figure()
+  
   plt.subplot(211)
-  showImbalance()
+  showImbalance(num_nodes, target_imbalances, imbalances, rebalance_steps)
+
   plt.subplot(212)
-  showKm1()
+  showKm1(num_nodes, km1s, rebalance_steps)
+  
   plt.show()
 
 def readLines(path):
@@ -28,33 +34,26 @@ def readLines(path):
   except:
     return []
 
-def showActualAndTarget(actualpath, actuallabel, targetpath, targetlabel, showfinal):
-  actuals = readLines(actualpath)
-  num = len(actuals)
-  if (num <= 0) : return
-  targets = readLines(targetpath)
-  if (len(targets) > 0): 
-    plt.plot(range(num), floatify(targets), 'r', label=targetlabel)
-    if showfinal:
-      plt.hlines(y=float(targets[num - 1]), xmin=0, xmax=num - 1 , linewidth=1.5, color='g', label='final target weight')
-  plt.plot(range(num), floatify(actuals), 'b', label=actuallabel)
+def showImbalance(num_nodes, target_imbalances, imbalances, rebalance_steps):
+  highest_point = 0
+  lowest_point = 0
 
-#Expecting the following format for imbalance.txt: one value per line
-#Expecting the following format for target_imbalances.txt: one value per line
-def showImbalance():
-  showActualAndTarget(upperpath, 'heaviest block weight', targetupperpath, 'target heaviest block', True)
-  
-  #standard_divs = readLines(standarddivspath)
-  #plt.plot(floatify(standard_divs), color='y', label='standard deviation')
+  if len(target_imbalances) > 0:
+    lowest_point = target_imbalances[len(target_imbalances) - 1]
+    highest_point = target_imbalances[0]
+    plt.plot(num_nodes, target_imbalances, 'r', label="target heaviest block")
+    plt.hlines(y=lowest_point, xmin=num_nodes[0], xmax=num_nodes[len(num_nodes) - 1] - 1, linewidth=1.5, color='y', label='final target weight')
+  else:
+    lowest_point = imbalances[len(imbalances) - 1]
+    highest_point = imbalances[0]
 
-  rebalancesteps = floatify(readLines(rebalancestepspath))
-  if (len(rebalancesteps) != 0):
-    uppers = floatify(readLines(targetupperpath))
-    plt.vlines(rebalancesteps, uppers[len(uppers) - 1], uppers[0], 'g', 'dashed', 'rebalance steps')
+  plt.plot(num_nodes, imbalances, 'b', label="heaviest block")
+
+  if (len(rebalance_steps) != 0):
+    plt.vlines(rebalance_steps, lowest_point, highest_point, 'g', 'dashed', 'rebalance steps')
   plt.legend()
   infoLines = readLines(infopath)
   if (len(infoLines) > 3):
-    infoLines.pop()
     infoLines.pop()
     infoLines.pop()
     infoLines.pop()
@@ -62,14 +61,13 @@ def showImbalance():
 
 
 #Expecting the following format: just one value per line, no comma
-def showKm1():
-  km1lines = floatify(readLines(km1path))
-  num = len(km1lines)
-  if num == 0: return
+def showKm1(num_nodes, km1s, rebalance_steps):
+  km1lines = km1s
   initkm1 = km1lines[0]
   finalkm1 = km1lines[len(km1lines) - 1]
-  plt.hlines(y=initkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='g', label='initial km1: ' + str(initkm1))
-  plt.hlines(y=finalkm1, xmin=0, xmax=num - 1 , linewidth=0.75, color='r', label='final km1: ' + str(finalkm1))
+  plt.hlines(y=initkm1, xmin=num_nodes[0], xmax=num_nodes[len(num_nodes) - 1], linewidth=0.75, color='g', label='initial km1: ' + str(initkm1))
+  plt.hlines(y=finalkm1, xmin=num_nodes[0], xmax=num_nodes[len(num_nodes) - 1], linewidth=0.75, color='r', label='final km1: ' + str(finalkm1))
+
 
   infoLines = readLines(infopath)
   graphFile = getLastWordFromLine(infoLines[0])
@@ -77,14 +75,13 @@ def showKm1():
   e = getLastWordFromLine(infoLines[2])
   kahyparkm1 = getKm1FromFile(graphFile, k, e)
   if kahyparkm1 != 0:
-    plt.hlines(y=kahyparkm1, xmin=0, xmax=num - 1 , linewidth=1, color='y', label='kahypar km1: ' + str(kahyparkm1))
+    plt.hlines(y=kahyparkm1, xmin=num_nodes[0], xmax=num_nodes[len(num_nodes) - 1], linewidth=1, color='y', label='kahypar km1: ' + str(kahyparkm1))
 
-  rebalancesteps = floatify(readLines(rebalancestepspath))
-  if (len(rebalancesteps) != 0):
-    plt.vlines(rebalancesteps, min(km1lines), max(km1lines), 'g', 'dashed', 'rebalance steps')
-
+  if (len(rebalance_steps) != 0):
+    plt.vlines(rebalance_steps, max(km1s), min(km1s), 'g', 'dashed', 'rebalance steps')
+ 
   plt.title('km1 goal - minimize')
-  plt.plot(km1lines, color='b', label='km1')
+  plt.plot(num_nodes, km1lines, color='b', label='km1')
   plt.legend()
 
 def getLastWordFromLine(line):
@@ -101,9 +98,6 @@ def getKm1FromFile(graphFileName, k, e):
     if lineElements[0] == graphFileName and lineElements[1] == k and lineElements[2] == e:
       return float(lineElements[3])
   return 0
-
-def floatify(arr):
-  return [None if v == '' else float(v) for v in arr]
 
 if __name__ == "__main__":
     main()

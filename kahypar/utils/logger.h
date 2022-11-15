@@ -141,25 +141,35 @@ inline void writeVectorsToCSV(
   const std::vector<Number>& num_nodes,
   const std::vector<Number2>& km1s,
   const std::vector<double>& imbalances, 
-  const std::vector<Number>& rebalance_steps,
+  const std::vector<int32_t>& rebalance_steps,
   const std::vector<double>& target_imbalances,
   std::string file) {
-  if (! (num_nodes.size() == km1s.size() && km1s.size() == imbalances.size() && imbalances.size() == rebalance_steps.size() && rebalance_steps.size() == target_imbalances.size()) ) {
+  if (! (num_nodes.size() == km1s.size() && km1s.size() == imbalances.size() && imbalances.size() == rebalance_steps.size()) ) {
     std::cerr << "Incorrect sizes of vectors to be plotted" << std::endl;
     return;
   }
-  if (file.empty()) {
-    std::cerr << "Invalid file";
+  if (!target_imbalances.empty() && target_imbalances.size() != num_nodes.size()) {
+    std::cerr << "Target Imbalances either of wrong size" << std::endl;
     return;
   }
-  addToFile("num_nodes,km1,imbalance,rebalance_step,target_imbalance\n", file);
+  if (file.empty()) {
+    return;
+  }
+  if (!target_imbalances.empty()) {
+    writeToFile("num_nodes,km1,imbalance,rebalance_step,target_imbalance\n", file);
+  } else {
+    writeToFile("num_nodes,km1,imbalance,rebalance_step\n", file);
+  }
   for (size_t i = 0; i < num_nodes.size(); i++) {
     std::stringstream s;
     s << num_nodes[i] << ",";
     s << km1s[i] << ",";
     s << imbalances[i] << ",";
-    s << rebalance_steps[i] << ",";
-    s << target_imbalances[i] << "\n";
+    s << rebalance_steps[i];
+    if (!target_imbalances.empty()) {
+      s << "," << target_imbalances[i];
+    }
+    s << "\n";
     addToFile(s.str(), file);
   }
 }

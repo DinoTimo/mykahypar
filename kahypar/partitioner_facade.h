@@ -45,10 +45,6 @@ namespace kahypar {
 class PartitionerFacade {
  public:
   void partition(Hypergraph& hypergraph, Context& context) {
-    if (context.logging.file_log_level != FileLogLevel::no_file_logging) {
-      clearPreviousPartitioningData();
-    }
-
     io::printBanner(context);
 
     sanityCheck(hypergraph, context);
@@ -76,9 +72,6 @@ class PartitionerFacade {
       io::serializer::serialize(context, hypergraph, elapsed_seconds, iteration);
     }
 
-    if (context.logging.show_diagram) {
-      io::callPythonPlottingScript();
-    }
     if (context.local_search.algorithm != RefinementAlgorithm::flow_balancing_kway_fm_km1 && context.local_search.algorithm != RefinementAlgorithm::rebalancing_kway_fm_km1 && context.logging.file_log_level != FileLogLevel::no_file_logging) {
       std::string path = context.partition.graph_filename;
       std::string graph_name = path.substr(path.find_last_of("/") + 1);
@@ -88,16 +81,6 @@ class PartitionerFacade {
   }
 
  private:
-  void clearPreviousPartitioningData() {
-    namespace fs = std::filesystem;
-    fs::path part_results_dir(fs::canonical("/proc/self/exe")); //this only works on linux
-    part_results_dir.remove_filename();
-    part_results_dir /= "../../../partitioning_results/data/";
-    fs::remove_all(part_results_dir);
-    fs::create_directory(part_results_dir);
-  }
-
-
   void setupVcycleRefinement(Hypergraph& hypergraph, Context& context) {
     // We perform direct k-way V-cycle refinements.
     context.partition.vcycle_refinement_for_input_partition = true;

@@ -228,6 +228,8 @@ inline void Partitioner::preprocess(Hypergraph& hypergraph, const Context& conte
       hypergraph.setCommunities(context.getCommunities());
     }
   }
+  HypernodeID numNodes = context.local_search.original_initial_num_hypernodes;
+  context.local_search.original_initial_num_hypernodes = (numNodes == 0) ? hypergraph.currentNumNodes() : numNodes;
 }
 
 inline void Partitioner::preprocess(Hypergraph& hypergraph, Hypergraph& sparse_hypergraph,
