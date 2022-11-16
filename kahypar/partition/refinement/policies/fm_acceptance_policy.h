@@ -60,7 +60,7 @@ class FlowAcceptancePolicy : public meta::PolicyBase {
       _step0_smallest_block_weight = step0_smallest_block_weight;
       _step0_heaviest_block_weight = step0_heaviest_block_weight;
       _step0_num_nodes = step0_num_nodes;
-      _total_num_steps = context.local_search.original_initial_num_hypernodes - step0_num_nodes;
+      _total_num_steps = hg.initialNumNodes() - step0_num_nodes;
       double raw_ideal_weight = static_cast<double>(hg.totalWeight()) / static_cast<double>(context.partition.k);
       _ideal_block_weight = static_cast<HypernodeWeight>(raw_ideal_weight);
       _final_upper_bound = raw_ideal_weight * (1.0 + context.partition.epsilon);

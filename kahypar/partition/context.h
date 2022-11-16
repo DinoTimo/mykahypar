@@ -218,7 +218,6 @@ struct LocalSearchParameters {
   HyperFlowCutter hyperflowcutter { };
   RefinementAlgorithm algorithm = RefinementAlgorithm::UNDEFINED;
   int iterations_per_level = std::numeric_limits<int>::max();
-  mutable HypernodeID original_initial_num_hypernodes = 0;
 };
 
 
