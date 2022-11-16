@@ -78,10 +78,6 @@ class PartitionerFacade {
       std::string final_kahypar_km1 = std::to_string(metrics::km1(hypergraph));
       addToFile(graph_name + " " + std::to_string(context.partition.k) + " " + std::to_string(context.partition.epsilon) + " " +  final_kahypar_km1 + "\n", "../partitioning_results/data/other_results.txt");
     }
-
-    if (context.logging.show_diagram) {
-      io::callPythonPlottingScript();
-    }
   }
 
  private:
