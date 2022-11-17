@@ -78,8 +78,7 @@ class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solv
           }
         }
       }
-      static std::pair<full_square_matrix<double>, full_square_matrix<double>> pair(L, U);
-      return pair;
+      return std::pair<full_square_matrix<double>, full_square_matrix<double>>(L, U);
     }
 
     //TODO use lower matrix type and remove template argument
