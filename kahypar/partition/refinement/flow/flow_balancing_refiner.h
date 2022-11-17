@@ -43,7 +43,7 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
       _move_flows(0),
       _capacity_matrix(_num_flow_nodes * _num_flow_nodes, 0),
       _quotient_edge_capacities(context.partition.k * context.partition.k, 0),
-      _adjacency_bitmap(context.partition.k * (context.partition.k - 1), 0),
+      _adjacency_bitmap(context.partition.k * (context.partition.k), false),
       _degree_vector(context.partition.k, 0),
       _laplace_matrix(context.partition.k * context.partition.k, 0),
       _block_weight_diff_vector(context.partition.k, 0),
@@ -210,13 +210,22 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
     // ABOVE ACTUAL FLOW CALCULATION ON QUTIOENT GRAPH
     // BELOW LAPLACE MATRIX BALANICNG FLOW CALCULATION
     // ------------------------------------------------------------------------------------------------------------------------
+    void setBlocksAdjacent(PartitionID block1, PartitionID block2) {
+      _adjacency_bitmap.at(block2 * _context.partition.k + block1) = true;
+      _adjacency_bitmap.at(block1 * _context.partition.k + block2) = true;
+    }
+
+    bool blockAdjacency(const PartitionID block1, const PartitionID block2) const {
+      return _adjacency_bitmap.at(block1 * _context.partition.k + block2);
+    }
     
     void calculateLaplaceMatrix() {
       calculateAdjacency();
+      std::fill(_laplace_matrix.begin(), _laplace_matrix.end(), 0);
       std::vector<double> b(_context.partition.k, 0);
       for (int i = 0; i < _context.partition.k; i++) {
         for (int j = 0; j < _context.partition.k; j++) {
-          _laplace_matrix[i * _context.partition.k + j] = (i == j) ? _degree_vector[i] : _adjacency_bitmap[i * (_context.partition.k - 1) + j];
+          _laplace_matrix[i * _context.partition.k + j] = (i == j) ? _degree_vector[i] : (-1 * blockAdjacency(i, j));
         }  
       }
       for (int i = 0; i <_context.partition.k; i++) {
@@ -231,17 +240,17 @@ class FlowBalancingRefiner : protected FMRefinerBase<RollbackElement, Derived> {
         if (_hg.connectivitySet(edge).size() <= 1) {
           continue;
         }
+        //maybe optimize for low current num nodes, since its expected to be fully connected
         for (PartitionID block1 : _hg.connectivitySet(edge)) {
           for (PartitionID block2 : _hg.connectivitySet(edge)) {
             if (block1 == block2) continue;
-            int index = block1 * (_context.partition.k - 1) + block2;
-            if (_adjacency_bitmap[index]) continue;
-            _degree_vector[block1] += 1;
-            _degree_vector[block2]++;
-            _adjacency_bitmap[index] = true;
+            if (!blockAdjacency(block1, block2)) {
+              setBlocksAdjacent(block1, block2);
+              _degree_vector[block1]++;
+              _degree_vector[block2]++;
+            }
           }
         }
-        
       }
     }
 

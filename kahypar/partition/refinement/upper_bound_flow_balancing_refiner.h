@@ -276,7 +276,7 @@ class UpperBoundKwayKMinusOneRefiner final : public IRefiner,
         //const bool first_achieved_balance = best_metrics.heaviest_block_weight >  && current_metrics.heaviest_block_weight <= currentUpperBound;
         // kahypar
         if (improved_km1 ||
-           (improved_balance && (current_metrics.km1 <= best_metrics.km1 || current_metrics.heaviest_block_weight > FlowBase::idealBlockWeight() * (1.0 + _context.partition.epsilon)))) { 
+        (improved_balance && (current_metrics.km1 <= best_metrics.km1 || current_metrics.heaviest_block_weight > currentUpperBound))) { 
           best_metrics = current_metrics;
           _stopping_policy.resetStatistics();
           min_cut_index = _performed_moves.size();
