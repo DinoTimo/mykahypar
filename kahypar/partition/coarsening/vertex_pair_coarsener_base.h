@@ -113,6 +113,15 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
         _context.partition.mode, _context.partition.objective),
       _context.partition.verbose_output && _context.type == ContextType::main);
     uncontraction_progress_bar += _hg.currentNumNodes();
+    if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target || 
+      _context.logging.file_log_level == FileLogLevel::write_imbalance_km1) {
+      _km1s.push_back(metrics::km1(_hg));
+      _num_nodes.push_back(_hg.currentNumNodes());
+      _imbalances.push_back(metrics::imbalance(_hg, _context));
+      _rebalance_steps.push_back(-1);
+    } if (_context.logging.file_log_level == FileLogLevel::write_imbalance_km1_target) {
+      _target_imbalances.push_back(metrics::imbalance(_hg, _context));
+    }
     while (!_history.empty()) {
       if (time_limit::isSoftTimeLimitExceeded(_context, _history.size())) {
         /*
