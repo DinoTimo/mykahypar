@@ -119,8 +119,6 @@ class PoolInitialPartitioner : public IInitialPartitioner,
     PartitioningResult max_imbalance(InitialPartitionerAlgorithm::pool, obj, kInvalidCut, -0.1);
 
     std::vector<PartitionID> best_partition(_hg.initialNumNodes());
-    double original_epsilon = _context.partition.epsilon;
-    modifyEpsilon();
     _context.stats.add(StatTag::InitialPartitioning, "initial_epsilon", _context.partition.epsilon);
     unsigned int n = _partitioner_pool.size() - 1;
     for (unsigned int i = 0; i <= n; ++i) {
@@ -214,57 +212,6 @@ class PoolInitialPartitioner : public IInitialPartitioner,
     // To prevent pool partitioner to execute himself nruns times, we
     // set the nruns parameter to 1.
     _context.initial_partitioning.nruns = 1;
-    _context.partition.epsilon = original_epsilon;
-  }
-
-  void modifyEpsilon() {
-    switch(_context.initial_partitioning.modified_epsilon) {
-      case ModifiedEpsilon::custom: 
-        _context.partition.epsilon = _context.initial_partitioning.custom_epsilon;
-        break;
-      case ModifiedEpsilon::same:
-        break;
-      case ModifiedEpsilon::node_avg: {
-        //(1+e')avg = max((1+e)avg, avg+max) 
-        double avg = ceil(static_cast<double>(_hg.totalWeight()) / _context.partition.k);
-        double onePlusModifiedEpsilon = std::max((1.0 + _context.partition.epsilon) * avg, avg + _hg.weightOfHeaviestNode()) / avg;
-        _context.partition.epsilon = onePlusModifiedEpsilon - 1;
-        DBG0 << "use modified epsilon e' =" << (onePlusModifiedEpsilon - 1.0);
-        break;
-      }
-      case ModifiedEpsilon::lpt: {
-        //apply lpt, choose heaviest block weight as epsilon
-        //ds::BinaryMinMaxHeap<PartitionID, HypernodeWeight> block_queue(_context.partition.k);
-        std::vector<HypernodeWeight> block_queue(_context.partition.k, 0);
-        std::vector<HypernodeID> descending_nodes(bin_packing::nodesInDescendingWeightOrder(_hg));
-        /*for (PartitionID k = 0; k < _context.partition.k; k++) {
-          block_queue.push(k, 0);
-        }*/
-        for (const HypernodeID& hn : descending_nodes) {
-          ASSERT(_hg.nodeIsEnabled(hn));
-          PartitionID min_block = 0;
-          for (PartitionID k = 1; k < _context.partition.k; k++) {
-            if (block_queue[k] < block_queue[min_block]) {
-              min_block = k;
-            }
-          } 
-          block_queue[min_block] += _hg.nodeWeight(hn);
-        }
-        HypernodeWeight heaviest_block_weight = block_queue[0];
-        for (PartitionID k = 1; k < _context.partition.k; k++) {
-          if (block_queue[k] > heaviest_block_weight) {
-            heaviest_block_weight = block_queue[k];
-          }
-        }
-        double avg = ceil(static_cast<double>(_hg.totalWeight()) / _context.partition.k);
-        _context.partition.epsilon = (static_cast<double>(heaviest_block_weight) / avg) - 1.0;
-        break;
-      }
-      case ModifiedEpsilon::UNDEFINED:
-        LOG << "Undefined modified epsilon, using the same as before";
-        break;
-      // omit default case to trigger compiler warning for missing cases
-      }
   }
 
   void applyPartitioningResults(PartitioningResult& result, const HyperedgeWeight quality,

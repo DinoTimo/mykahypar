@@ -38,17 +38,75 @@ static inline void partition(Hypergraph& hypergraph, const Context& context);
 namespace initial {
 static constexpr bool debug = false;
 
+static inline double modifyEpsilon(const Context& context, const Hypergraph& hg) {
+    switch(context.initial_partitioning.modified_epsilon) {
+      case ModifiedEpsilon::custom: 
+        return context.initial_partitioning.custom_epsilon;
+        break;
+      case ModifiedEpsilon::same:
+        return context.partition.epsilon;
+        break;
+      case ModifiedEpsilon::node_avg: {
+        //(1+e')avg = max((1+e)avg, avg+max) 
+        double avg = ceil(static_cast<double>(hg.totalWeight()) / context.partition.k);
+        double onePlusModifiedEpsilon = std::max((1.0 + context.partition.epsilon) * avg, avg + hg.weightOfHeaviestNode()) / avg;
+        DBG0 << "use modified epsilon e' =" << (onePlusModifiedEpsilon - 1.0);
+        return onePlusModifiedEpsilon - 1;
+        break;
+      }
+      case ModifiedEpsilon::lpt: {
+        //apply lpt, choose heaviest block weight as epsilon
+        //ds::BinaryMinMaxHeap<PartitionID, HypernodeWeight> block_queue(context.partition.k);
+        std::vector<HypernodeWeight> block_queue(context.partition.k, 0);
+        std::vector<HypernodeID> descending_nodes(bin_packing::nodesInDescendingWeightOrder(hg));
+        /*for (PartitionID k = 0; k < context.partition.k; k++) {
+          block_queue.push(k, 0);
+        }*/
+        for (const HypernodeID& hn : descending_nodes) {
+          ASSERT(hg.nodeIsEnabled(hn));
+          PartitionID min_block = 0;
+          for (PartitionID k = 1; k < context.partition.k; k++) {
+            if (block_queue[k] < block_queue[min_block]) {
+              min_block = k;
+            }
+          } 
+          block_queue[min_block] += hg.nodeWeight(hn);
+        }
+        HypernodeWeight heaviest_block_weight = block_queue[0];
+        for (PartitionID k = 1; k < context.partition.k; k++) {
+          if (block_queue[k] > heaviest_block_weight) {
+            heaviest_block_weight = block_queue[k];
+          }
+        }
+        double avg = ceil(static_cast<double>(hg.totalWeight()) / context.partition.k);
+        return (static_cast<double>(heaviest_block_weight) / avg) - 1.0;
+        break;
+      }
+      case ModifiedEpsilon::UNDEFINED:
+        LOG << "Undefined modified epsilon, using the same as before";
+        break;
+      // omit default case to trigger compiler warning for missing cases
+    }
+    return context.partition.epsilon;
+  }
+
 static inline Context createContext(const Hypergraph& hg,
                                     const Context& original_context) {
   Context context(original_context);
-
+  if (original_context.type == ContextType::main) { //If we enter initial partitioning
+    context.partition.epsilon = modifyEpsilon(original_context, hg);
+    for (PartitionID i = 0; i < context.partition.k; i++) {
+      context.partition.max_part_weights[i] = (hg.totalWeight() / context.partition.k) * (1 + context.partition.epsilon);
+    }
+  } else {
+    context.partition.epsilon = original_context.partition.epsilon;
+  }
   context.type = ContextType::initial_partitioning;
 
   if (!context.preprocessing.community_detection.enable_in_initial_partitioning) {
     context.preprocessing.enable_community_detection = false;
   }
 
-  context.partition.epsilon = original_context.partition.epsilon;
 
   context.partition.global_search_iterations = 0;
 
