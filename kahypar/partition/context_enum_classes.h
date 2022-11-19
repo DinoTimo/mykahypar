@@ -202,6 +202,12 @@ enum class FileLogLevel : uint8_t {
   write_imbalance_km1_target
 };
 
+enum class ShowDiagram : uint8_t {
+  dont_show,
+  only_main,
+  always
+};
+
 enum class FlowExecutionMode : uint8_t {
   constant,
   multilevel,
@@ -273,6 +279,16 @@ static std::ostream& operator<< (std::ostream& os, const FileLogLevel& log_level
       // omit default case to trigger compiler warning for missing cases
   }
   return os << static_cast<uint8_t>(log_level);
+}
+
+static std::ostream& operator<< (std::ostream& os, const ShowDiagram& diagram) {
+  switch (diagram) {
+    case ShowDiagram::dont_show:  return os << "dont show";
+    case ShowDiagram::always:  return os << "in init part and main";
+    case ShowDiagram::only_main :  return os << "only_main";
+      // omit default case to trigger compiler warning for missing cases
+  }
+  return os << static_cast<uint8_t>(diagram);
 }
 
 static std::ostream& operator<< (std::ostream& os, const RatingPartitionPolicy& policy) {
@@ -789,6 +805,20 @@ static FileLogLevel fileLogLevelFromString(std::string log_level) {
   LOG << "Illegal option:" << log_level;
   exit(0);
   return FileLogLevel::no_file_logging;
+}
+
+
+static ShowDiagram showDiagramFromString(std::string diagram) {
+  if (diagram == "dont_show") {
+    return ShowDiagram::dont_show;
+  } else if (diagram == "only_main") {
+    return ShowDiagram::only_main;
+  } if (diagram == "always") {
+    return ShowDiagram::always;
+  }
+  LOG << "Illegal option:" << diagram;
+  exit(0);
+  return ShowDiagram::dont_show;
 }
 
 static Mode modeFromString(const std::string& mode) {

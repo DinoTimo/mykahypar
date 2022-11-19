@@ -448,8 +448,8 @@ inline std::ostream& operator<< (std::ostream& str, const EvolutionaryParameters
 
 struct FileLoggingParameters {
   FileLogLevel file_log_level = FileLogLevel::no_file_logging; 
-  bool show_diagram = false;
-  std::string csv_file_path;
+  ShowDiagram show_diagram = ShowDiagram::dont_show;
+  std::string csv_file_path = "";
 };
 
 inline std::ostream& operator<< (std::ostream& str, const FileLoggingParameters& params) {

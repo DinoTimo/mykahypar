@@ -665,8 +665,11 @@ po::options_description createLoggingOptionsDescription(Context& context,
   po::options_description logging_options("Logging Options", num_columns);
   logging_options.add_options()
     ("logging-show-diagram",
-    po::value<bool>(&context.logging.show_diagram)->value_name("<bool>"),
-    "Show refinement values after partitioning")
+    po::value<std::string>()->value_name("string")->notifier(
+    [&](const std::string& diagram) {
+      context.logging.show_diagram = kahypar::showDiagramFromString(diagram);
+    }),
+    "Decide if the diagram is shown in both rec bis and actual local search")
     ("logging-file-log-level",
     po::value<std::string>()->value_name("string")->notifier(
       [&](const std::string& log_level) {

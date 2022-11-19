@@ -183,7 +183,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       writeToFile(generalInfo(), data_dir_string + "info.txt");
       writeVectorsToCSV(_num_nodes, _km1s, _imbalances, _rebalance_steps, _target_imbalances, _context.logging.csv_file_path);
     }
-    if (_context.logging.show_diagram) {
+    if (_context.logging.show_diagram == ShowDiagram::always || (_context.logging.show_diagram == ShowDiagram::only_main && _context.type == ContextType::main)) {
       io::callPythonPlottingScript();
     }
     bool improvement_found = false;
