@@ -48,7 +48,7 @@ class matrix_solver {
 /**
  * This Decomposition class only does A = LU with no pivot matrix, as it is expected for the main diagonal
  * of A to be strictly non 0.
- * 
+ * This is only intendet to be used via the laplace matrix as in the upper_bound_refiner
  */
 class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solver> {
 
@@ -108,7 +108,11 @@ class LU_Decomp_matrix_solver final : public matrix_solver<LU_Decomp_matrix_solv
         for (int j = i + 1; j < N; j++) {
           x[i] -= A.at(i, j) * x[j];
         }
-        x[i] /= A.at(i, i); 
+        if (A.at(i, i) == 0) {
+          x[i] = 0;
+        } else {
+          x[i] /= A.at(i, i);
+        }
       }
       return x;
     }
