@@ -36,6 +36,7 @@
 #include "kahypar/partition/coarsening/vertex_pair_rater.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/metrics.h"
+#include "kahypar/partition/bin_packing/bin_packing_utils.h"
 #include "kahypar/partition/refinement/i_refiner.h"
 #include "kahypar/utils/progress_bar.h"
 #include "kahypar/utils/randomize.h"
@@ -43,6 +44,44 @@
 #include "kahypar/io/hypergraph_io.h"
 
 namespace kahypar {
+
+static void logCalculatedImbalances(const Hypergraph& hg, const Context& context, StatTag tag) {
+    double node_avg_imbalance = ceil(static_cast<double>(hg.totalWeight()) / context.partition.k);
+    node_avg_imbalance = std::max((1.0 + context.partition.epsilon) * node_avg_imbalance, node_avg_imbalance + hg.weightOfHeaviestNode()) / node_avg_imbalance;
+    node_avg_imbalance -= 1.0;  
+    
+    std::vector<HypernodeWeight> block_queue(context.partition.k, 0);
+    std::vector<HypernodeID> descending_nodes(bin_packing::nodesInDescendingWeightOrder(hg));
+
+    for (const HypernodeID& hn : descending_nodes) {
+      ASSERT(hg.nodeIsEnabled(hn));
+      PartitionID min_block = 0;
+      for (PartitionID k = 1; k < context.partition.k; k++) {
+        if (block_queue[k] < block_queue[min_block]) {
+          min_block = k;
+        }
+      } 
+      block_queue[min_block] += hg.nodeWeight(hn);
+    }
+    HypernodeWeight heaviest_block_weight = block_queue[0];
+    for (PartitionID k = 1; k < context.partition.k; k++) {
+      if (block_queue[k] > heaviest_block_weight) {
+        heaviest_block_weight = block_queue[k];
+      }
+    }
+    double avg = ceil(static_cast<double>(hg.totalWeight()) / context.partition.k);
+    double lpt_imbalance = (static_cast<double>(heaviest_block_weight) / avg) - 1.0;
+    context.stats.set(tag, "current_num_nodes", hg.currentNumNodes());
+    context.stats.set(tag, "current_total_weight", hg.totalWeight());
+    context.stats.set(tag, "current_heaviest_node_weight", hg.weightOfHeaviestNode());
+    context.stats.set(tag, "node_avg_imbalance", node_avg_imbalance);
+    context.stats.set(tag, "lpt_imbalance", lpt_imbalance);
+  }
+
+
+
+
+
 template <class PrioQueue = ds::BinaryMaxHeap<HypernodeID, RatingType> >
 class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
@@ -96,10 +135,7 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
     }
 
     if (_context.type == ContextType::main) {
-      _context.stats.set(StatTag::InitialPartitioning, "initialCut", current_metrics.cut);
-      _context.stats.set(StatTag::InitialPartitioning, "initialKm1", current_metrics.km1);
-      _context.stats.set(StatTag::InitialPartitioning, "initialImbalance",
-                         current_metrics.imbalance);
+      logCalculatedImbalances(_hg, _context, StatTag::InitialPartitioning);
     }
 
     CoarsenerBase::initializeRefiner(refiner);

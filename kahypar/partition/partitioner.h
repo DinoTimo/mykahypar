@@ -30,6 +30,7 @@
 #include "kahypar/io/hypergraph_io.h"
 #include "kahypar/io/partitioning_output.h"
 #include "kahypar/partition/coarsening/hypergraph_pruner.h"
+#include "kahypar/partition/coarsening/vertex_pair_coarsener_base.h"
 #include "kahypar/partition/context.h"
 #include "kahypar/partition/direct_kway.h"
 #include "kahypar/partition/factories.h"
@@ -288,6 +289,7 @@ inline void Partitioner::partition(Hypergraph& hypergraph, Context& context) {
                   "and while filling the initial population of KaHyParE.");
     Hypergraph sparseHypergraph;
     preprocess(hypergraph, sparseHypergraph, context);
+    logCalculatedImbalances(sparseHypergraph, context, StatTag::Preprocessing);
     ASSERT(sparseHypergraph.numFixedVertices() == hypergraph.numFixedVertices());
     partition::partition(sparseHypergraph, context);
     hypergraph.reset();

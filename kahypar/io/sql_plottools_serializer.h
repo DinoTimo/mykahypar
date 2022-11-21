@@ -31,6 +31,7 @@
 #include "kahypar/partition/evolutionary/individual.h"
 #include "kahypar/partition/metrics.h"
 #include "kahypar/partition/partitioner.h"
+#include "kahypar/partition/bin_packing/bin_packing_utils.h"
 
 namespace kahypar {
 namespace io {
@@ -41,62 +42,21 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
   if (!context.partition.sp_process_output) {
     return;
   }
-  const auto& timings = Timer::instance().result();
-
-  std::stringstream algo_name;
-
-  if (context.partition.mode == Mode::recursive_bisection) {
-    algo_name << "r";
-  } else if (context.partition.mode == Mode::direct_kway) {
-    algo_name << "k";
-  } else {
-    algo_name << "UnknownMode";
-  }
-
-  algo_name << "KaHyPar";
-
-  if (context.local_search.hyperflowcutter.flowhypergraph_size_constraint == FlowHypergraphSizeConstraint::part_weight_fraction) {
-    algo_name << "-Eco";
-  }
 
   std::ostringstream oss;
   oss << "RESULT"
-      << " algorithm=" << algo_name.str()
       << " graph=" << context.partition.graph_filename.substr(context.partition.graph_filename.find_last_of('/') + 1)
-      << " interrupted=" << (interrupted ? "yes" : "no")
-      << " timeout=" << (context.partition.time_limit_triggered ? "yes" : "no")
       << " numHNs=" << hypergraph.initialNumNodes()
       << " numHEs=" << hypergraph.initialNumEdges()
       << " numComponents=" << metrics::amountConnectedComponents(hypergraph)
       << " " << hypergraph.typeAsString();
-  if (!context.partition.fixed_vertex_filename.empty()) {
-    oss << " fixed_vertex_file=" << context.partition.fixed_vertex_filename.substr(context.partition.fixed_vertex_filename.find_last_of('/') + 1)
-        << " num_fixed_vertices=" << hypergraph.numFixedVertices()
-        << " fixed_vertices_imbalance=" << metrics::imbalanceFixedVertices(hypergraph, context.partition.k);
-  }
   oss << " mode=" << context.partition.mode
       << " objective=" << context.partition.objective
       << " k=" << context.partition.k
       << " epsilon=" << context.partition.epsilon
       << " seed=" << context.partition.seed
-      << " num_v_cycles=" << context.partition.global_search_iterations
-      << " he_size_threshold=" << context.partition.hyperedge_size_threshold
-      << " total_graph_weight=" << hypergraph.totalWeight();
-  if (context.partition.use_individual_part_weights) {
-    for (PartitionID i = 0; i != hypergraph.k(); ++i) {
-      oss << " L_opt" << i << "=" << context.partition.perfect_balance_part_weights[i];
-    }
-  } else {
-    oss << " L_opt" << "=" << context.partition.perfect_balance_part_weights[0];
-  }
-
-  if (context.partition.use_individual_part_weights) {
-    for (PartitionID i = 0; i != hypergraph.k(); ++i) {
-      oss << " L_max" << i << "=" << context.partition.max_part_weights[i];
-    }
-  } else {
-    oss << " L_max" << "=" << context.partition.max_part_weights[0];
-  }
+      << " total_graph_weight=" << hypergraph.totalWeight()
+      << " he_size_threshold=" << context.partition.hyperedge_size_threshold;
 
   oss << " pre_enable_deduplication=" << std::boolalpha
       << context.preprocessing.enable_deduplication
@@ -147,130 +107,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
       << " coarsening_rating_acceptance_policy="
       << context.coarsening.rating.acceptance_policy
       << " coarsening_rating_fixed_vertex_acceptance_policy="
-      << context.coarsening.rating.fixed_vertex_acceptance_policy
-      << " IP_mode=" << context.initial_partitioning.mode
-      << " IP_technique=" << context.initial_partitioning.technique
-      << " IP_algorithm=" << context.initial_partitioning.algo
-      << " IP_pool_type=" << context.initial_partitioning.pool_type
-      << " IP_num_runs=" << context.initial_partitioning.nruns
-      << " IP_bin_packing_algo=" << context.initial_partitioning.bp_algo
-      << " IP_enable_early_restart=" << context.initial_partitioning.enable_early_restart
-      << " IP_enable_late_restart=" << context.initial_partitioning.enable_late_restart
-      << " IP_coarsening_algo=" << context.initial_partitioning.coarsening.algorithm
-      << " IP_coarsening_max_allowed_weight_multiplier="
-      << context.initial_partitioning.coarsening.max_allowed_weight_multiplier
-      << " IP_coarsening_contraction_limit_multiplier="
-      << context.initial_partitioning.coarsening.contraction_limit_multiplier
-      << " IP_coarsening_modified_epsilon="
-      << context.initial_partitioning.modified_epsilon
-      << " IP_coarsening_custom_epsilon="
-      << context.initial_partitioning.custom_epsilon
-      << " IP_coarsening_rating_function="
-      << context.initial_partitioning.coarsening.rating.rating_function
-      << " IP_coarsening_rating_use_communities="
-      << context.initial_partitioning.coarsening.rating.community_policy
-      << " IP_coarsening_rating_heavy_node_penalty="
-      << context.initial_partitioning.coarsening.rating.heavy_node_penalty_policy
-      << " IP_coarsening_rating_acceptance_policy="
-      << context.initial_partitioning.coarsening.rating.acceptance_policy
-      << " IP_coarsening_rating_fixed_vertex_acceptance_policy="
-      << context.initial_partitioning.coarsening.rating.fixed_vertex_acceptance_policy
-      << " IP_local_search_algorithm="
-      << context.initial_partitioning.local_search.algorithm
-      << " IP_local_search_iterations_per_level="
-      << context.initial_partitioning.local_search.iterations_per_level;
-  if (context.initial_partitioning.local_search.algorithm == RefinementAlgorithm::twoway_fm ||
-      context.initial_partitioning.local_search.algorithm == RefinementAlgorithm::kway_fm ||
-      context.initial_partitioning.local_search.algorithm == RefinementAlgorithm::kway_fm_km1) {
-    oss << " IP_local_search_fm_stopping_rule="
-        << context.initial_partitioning.local_search.fm.stopping_rule
-        << " IP_local_search_fm_max_number_of_fruitless_moves="
-        << context.initial_partitioning.local_search.fm.max_number_of_fruitless_moves
-        << " IP_local_search_fm_adaptive_stopping_alpha="
-        << context.initial_partitioning.local_search.fm.adaptive_stopping_alpha;
-  }
-  oss << " local_search_algorithm=" << context.local_search.algorithm
-      << " local_search_iterations_per_level=" << context.local_search.iterations_per_level;
-  if (context.local_search.algorithm == RefinementAlgorithm::twoway_fm ||
-      context.local_search.algorithm == RefinementAlgorithm::kway_fm ||
-      context.local_search.algorithm == RefinementAlgorithm::kway_fm_km1 ||
-      context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
-      context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
-    oss << " local_search_fm_stopping_rule=" << context.local_search.fm.stopping_rule
-        << " local_search_fm_max_number_of_fruitless_moves="
-        << context.local_search.fm.max_number_of_fruitless_moves
-        << " local_search_fm_adaptive_stopping_alpha="
-        << context.local_search.fm.adaptive_stopping_alpha;
-  }
-
-  if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1 ||
-      context.local_search.algorithm == RefinementAlgorithm::rebalancing_kway_fm_km1) {
-    oss << " balance_convergence_speed=" << context.local_search.fm.balance_convergence_speed
-        << " balance_convergence_time=" << context.local_search.fm.balance_convergence_time
-        << " acceptance_policy=" << context.local_search.flow.acceptance_policy;
-    if (context.local_search.flow.acceptance_policy == AcceptanceRule::staircase) {
-      oss << " num_staircase_steps=" << context.local_search.fm.num_staircase_steps;
-    }
-    oss << " flow_execution_policy=" << context.local_search.flow.execution_policy;
-    if (context.local_search.flow.execution_policy == FlowExecutionMode::constant) {
-      oss << " flow_beta=" << context.local_search.flow.beta; 
-    }
-  }
-  if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
-    oss << " km1_increase_tolerance=" << context.local_search.fm.km1_increase_tolerance
-        << " flow_model=" << context.local_search.fm.flow_model;
-  }
-  oss << " iteration=" << iteration;
-  for (PartitionID i = 0; i != hypergraph.k(); ++i) {
-    oss << " partSize" << i << "=" << hypergraph.partSize(i);
-  }
-  for (PartitionID i = 0; i != hypergraph.k(); ++i) {
-    oss << " partWeight" << i << "=" << hypergraph.partWeight(i);
-  }
-
-  if (!interrupted) {
-    oss << " cut=" << metrics::hyperedgeCut(hypergraph)
-        << " soed=" << metrics::soed(hypergraph)
-        << " km1=" << metrics::km1(hypergraph)
-        << " absorption=" << metrics::absorption(hypergraph)
-        << " imbalance=" << metrics::imbalance(hypergraph, context);
-    oss << " totalPartitionTime=" << elapsed_seconds.count();
-  } else {      // don't know the state of the hypergraph
-    oss << " cut=" << std::numeric_limits<HyperedgeWeight>::max()
-        << " soed=" << std::numeric_limits<HyperedgeWeight>::max()
-        << " km1=" << std::numeric_limits<HyperedgeWeight>::max()
-        << " absorption=" << std::numeric_limits<HyperedgeWeight>::max()
-        << " imbalance=" << 1.0;
-
-    // we're assuming the external interruption comes from an external timeout which is as long as the internally set time limit
-    oss << " totalPartitionTime=" << context.partition.time_limit;
-  }
-
-  // These detailed timings don't make sense in memetic mode
-  if (!context.partition_evolutionary &&
-      !context.partition.time_limited_repeated_partitioning) {
-    oss << " minHashSparsifierTime=" << timings.pre_sparsifier
-        << " communityDetectionTime=" << timings.pre_community_detection
-        << " coarseningTime=" << timings.total_coarsening
-        << " initialPartitionTime=" << timings.total_initial_partitioning
-        << " uncoarseningRefinementTime=" << timings.total_local_search
-        << " flowTime=" << timings.total_flow_refinement
-        << " balancingTime=" << timings.total_balancing
-        << " postMinHashSparsifierTime=" << timings.post_sparsifier_restore;
-  }
-
-  if (context.partition.global_search_iterations > 0) {
-    int i = 1;
-    for (const auto& timing : timings.v_cycle_coarsening) {
-      oss << " vcycle" << i << "_coarsening=" << timing;
-    }
-    i = 1;
-    for (const auto& timing : timings.v_cycle_local_search) {
-      oss << " vcycle" << i << "_local_search=" << timing;
-    }
-  }
-
-  // Prevent stats from cluttering spprocess output in memetic mode
+      << context.coarsening.rating.fixed_vertex_acceptance_policy;
   if (!context.partition_evolutionary &&
       !context.partition.time_limited_repeated_partitioning) {
     oss << " " << context.stats.serialize().str();
