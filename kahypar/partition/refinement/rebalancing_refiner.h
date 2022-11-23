@@ -152,7 +152,6 @@ class RebalancingKwayKMinusOneRefiner final : public IRefiner,
       HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
       Timer::instance().add(_context, Timepoint::balancing, std::chrono::duration<double>(end - start).count());
     }
-    ASSERT(current_metrics.heaviest_block_weight <= currentUpperBound);
   }
 
   void setStep0Values() {

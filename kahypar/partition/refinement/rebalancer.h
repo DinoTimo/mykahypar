@@ -308,7 +308,6 @@ class Rebalancer {
       ASSERT((max_to_part == _invalid_part) == (max_gain == _invalid_gain));
       ASSERT((max_to_part < k || max_to_part == _invalid_part) && max_to_part != from_part);
       ASSERT(max_to_part == _invalid_part || _hg.partWeight(max_to_part) + _hg.nodeWeight(node) <= _current_upper_bound);
-      ASSERT(foundAnyMove || !ignore_neighbourhood, "Expects to always find a move if neighbourhood is ignored");
       if (foundAnyMove) {
         ASSERT(max_gain != _invalid_gain);
         max_gain = (max_gain >= 0) ? max_gain * _hg.nodeWeight(node) : max_gain / _hg.nodeWeight(node);

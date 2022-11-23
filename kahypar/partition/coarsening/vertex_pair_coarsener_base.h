@@ -46,6 +46,7 @@ namespace kahypar {
 template <class PrioQueue = ds::BinaryMaxHeap<HypernodeID, RatingType> >
 class VertexPairCoarsenerBase : public CoarsenerBase {
  private:
+  using Heap = ds::BinaryMinHeap<HypernodeWeight, HypernodeWeight>; 
   static constexpr bool debug = false;
   std::vector<HyperedgeWeight> _km1s;
   std::vector<int32_t> _rebalance_steps; //this is a duplicate to the same attribute inside the rebalancing refiner
@@ -75,8 +76,50 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
 
  protected:
   FRIEND_TEST(ACoarsener, SelectsNodePairToContractBasedOnHighestRating);
+  
+  static void fillEmptyBlocks(Hypergraph& hypergraph, const Context& context) {
+    if (hypergraph.currentNumNodes() < static_cast<HypernodeID>(context.partition.k)) {
+      return; //We cant fix the problem right now
+    }
+    std::vector<PartitionID> empty_blocks;
+    for (PartitionID block = 0; block < context.partition.k; block++) {
+      if (hypergraph.partWeight(block) == 0) {
+        empty_blocks.push_back(block);
+      } 
+    }
+    if (empty_blocks.empty()) {
+      return; //There is nothing to be fixed
+    }
+    
+    
+    std::vector<HypernodeID> node_moves_away(context.partition.k, 0);
+    //Find #empty_blocks heaviest nodes in hg 
+    Heap heap(hypergraph.initialNumNodes());
+    for (const HypernodeID& node : hypergraph.nodes()) {
+      HypernodeWeight weight = hypergraph.nodeWeight(node);
+      PartitionID from = hypergraph.partID(node);
+      if (heap.size() < empty_blocks.size() && hypergraph.partSize(from) - node_moves_away[from] > 1) {
+        node_moves_away[from]++;
+        heap.push(node, weight);
+      } else if (heap.topKey() < weight &&
+        (hypergraph.partSize(from) - node_moves_away[from] > 1 || from == hypergraph.partID(heap.top()))) {
+        node_moves_away[hypergraph.partID(heap.top())]--;
+        heap.pop();
+        heap.push(node, weight);
+        node_moves_away[from]++;
+      } 
+    }
+
+    //Empty heap arbritrarily
+    for (PartitionID block : empty_blocks) {
+      HypernodeID node = heap.top();
+      heap.pop();
+      hypergraph.changeNodePart(node, hypergraph.partID(node), block);
+    }
+  }
 
   bool doUncoarsen(IRefiner& refiner) {
+    fillEmptyBlocks(_hg, _context);
     Metrics current_metrics = { metrics::hyperedgeCut(_hg),
                                 metrics::km1(_hg),
                                 metrics::imbalance(_hg, _context),
