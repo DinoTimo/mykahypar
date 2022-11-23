@@ -21,21 +21,10 @@ namespace kahypar {
 
 class Rebalancer {
   static constexpr bool debug = false;
-  const static PartitionID _invalid_part = -1;
+  constexpr static PartitionID _invalid_part = -1;
   const static Gain _invalid_gain = std::numeric_limits<Gain>::min();
   using Queue = ds::BinaryMinMaxHeap<HypernodeWeight, HypernodeWeight>;
   private:
-    struct NodeMove
-    {
-      HypernodeID node;
-      PartitionID to_part;
-
-      bool operator==(NodeMove& other) {
-        return other.node == node && other.to_part == to_part;
-      }
-    };
-    
-
 
   public:
     Rebalancer(Hypergraph& hg, const Context& context) :
@@ -45,8 +34,8 @@ class Rebalancer {
     _queues(),
     _queue_weights(k, 0),
     _current_upper_bound(0),
-    _adjacency_bitmap(k * (k - 1) / 2, false),
-    _is_inserted_into_any_q_bitmap(hg.initialNumNodes()) { }
+    _adjacency_bitmap(k * k, false), //too large
+    _node_to_part_map(hg.initialNumNodes(), _invalid_part) { }
 
     ~Rebalancer() = default;
 
@@ -58,7 +47,7 @@ class Rebalancer {
 
     void initialize() {
       for (PartitionID part = 0; part < k; part++) {
-        _queues.emplace_back(_hg.initialNumNodes() * k);
+        _queues.emplace_back(_hg.initialNumNodes());
       }
     }
 
@@ -95,18 +84,18 @@ class Rebalancer {
           DBG0 << "found move for node " << node << " from part " << from_part << " to part " << to_part << " with gain " << relativeGain;
         }
         //try to insert move into
-        if (_queue_weights[from_part] < excessWeight(from_part)) {
+        if (_queue_weights.at(from_part) < excessWeight(from_part)) {
           insertIntoQ(node, to_part, relativeGain);
-        } else if (relativeGain > _queues[from_part].minKey()) {
+        } else if (relativeGain > _queues.at(from_part).minKey()) {
           insertIntoQ(node, to_part, relativeGain);
-          if (_queue_weights[from_part] > excessWeight(from_part) + heaviest_node_weight) {
-            NodeMove removedMove = nodeMoveFromInt(_queues[from_part].min());
-            _queues[from_part].popMin();
-            ASSERT(_is_inserted_into_any_q_bitmap[removedMove.node]);
-            _is_inserted_into_any_q_bitmap[removedMove.node] = false;
-            _queue_weights[from_part] -= _hg.nodeWeight(removedMove.node);
-            ASSERT(removedMove.to_part != from_part);
-            ASSERT(!_queues[from_part].contains(nodeMoveToInt(removedMove)));
+          if (_queue_weights.at(from_part) > excessWeight(from_part) + heaviest_node_weight) {
+            HypernodeID removedNode = _queues.at(from_part).min();
+            ASSERT(_node_to_part_map.at(removedNode) != _invalid_part);
+            _queues.at(from_part).popMin();
+            _node_to_part_map.at(removedNode) = _invalid_part;
+            _queue_weights.at(from_part) -= _hg.nodeWeight(removedNode);
+            ASSERT(_node_to_part_map.at(removedNode) != from_part);
+            ASSERT(!_queues.at(from_part).contains(removedNode));
           }
         }
       }
@@ -165,7 +154,7 @@ class Rebalancer {
     }
 
     bool tryToMoveOutOfBlock(const PartitionID& block, std::vector<Move>& moves) {
-      if (_queues[block].empty()) {
+      if (_queues.at(block).empty()) {
         DBG << "No moves available for" << V(block) << " but still has weight " << _hg.partWeight(block);
         return false;
       }
@@ -173,45 +162,46 @@ class Rebalancer {
         DBG << V(block) << " has been balanced and now weighs " << _hg.partWeight(block);
         return false;
       }
-      const NodeMove move = nodeMoveFromInt(_queues[block].max());
-      const Gain relativeGain = _queues[block].maxKey();
-      ASSERT(block == _hg.partID(move.node), V(block) << V(_hg.partID(move.node)) << V(move.node));
-      _queues[block].popMax();
-      ASSERT(_is_inserted_into_any_q_bitmap[move.node]);
-      _is_inserted_into_any_q_bitmap[move.node] = false;
-      ASSERT(!_queues[block].contains(nodeMoveToInt(move)));
-      _queue_weights[block] -= _hg.nodeWeight(move.node); 
-      if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound
-      || gainChangedFor(move.node, move.to_part, relativeGain))  {
-        if (_hg.partWeight(move.to_part) + _hg.nodeWeight(move.node) > _current_upper_bound) {
-          DBG << V(move.to_part) << " would become overloaded if " << V(move.node) << "[" << _hg.nodeWeight(move.node) << "] was moved to it";
+      const HypernodeID node = _queues.at(block).max();
+      const Gain relativeGain = _queues.at(block).maxKey();
+      const PartitionID to_part = _node_to_part_map.at(node);
+      ASSERT(block == _hg.partID(node), V(block) << V(_hg.partID(node)) << V(node));
+      ASSERT(to_part != _invalid_part);
+      _queues.at(block).popMax();
+      _node_to_part_map.at(node) = _invalid_part;
+      ASSERT(!_queues.at(block).contains(node));
+      _queue_weights.at(block) -= _hg.nodeWeight(node); 
+      if (_hg.partWeight(to_part) + _hg.nodeWeight(node) > _current_upper_bound
+      || gainChangedFor(node, to_part, relativeGain))  {
+        if (_hg.partWeight(to_part) + _hg.nodeWeight(node) > _current_upper_bound) {
+          DBG << V(to_part) << " would become overloaded if " << V(node) << "[" << _hg.nodeWeight(node) << "] was moved to it";
         } else {
-          DBG << "gain changed for node " << move.node << " from part " << block << " to part " << move.to_part;
+          DBG << "gain changed for node " << node << " from part " << block << " to part " << to_part;
         }
-        if (_hg.isBorderNode(move.node) || _queue_weights[block] < excessWeight(block)) {
-          std::pair<bool, std::pair<PartitionID, Gain>> newMove = highestGainMoveToNotOverloadedBlock(move.node);
+        if (_hg.isBorderNode(node) || _queue_weights.at(block) < excessWeight(block)) {
+          std::pair<bool, std::pair<PartitionID, Gain>> newMove = highestGainMoveToNotOverloadedBlock(node);
           PartitionID to_part = newMove.second.first;
           Gain newRelativeGain = newMove.second.second;
           if (!newMove.first) {
             ASSERT(newRelativeGain == _invalid_gain && to_part == _invalid_part);
           } else {
-            insertIntoQ(move.node, to_part, newRelativeGain);
+            insertIntoQ(node, to_part, newRelativeGain);
           }
           //Try to insert all neighbours from former block
-          for (const HyperedgeID& edge : _hg.incidentEdges(move.node)) {
+          for (const HyperedgeID& edge : _hg.incidentEdges(node)) {
             for (const HypernodeID& neighbour : _hg.pins(edge)) {
-              if (!_hg.active(neighbour) || neighbour == move.node || _hg.partID(neighbour) != block) {
-                tryToInsertIntoCorrectQ(move.node);
+              if (!_hg.active(neighbour) || neighbour == node || _hg.partID(neighbour) != block) {
+                tryToInsertIntoCorrectQ(node);
               }
             }
           }
         }
       } else {
-        DBG0 << "hypernode " << move.node << "[" << _hg.nodeWeight(move.node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << move.to_part<< "[" << _hg.partWeight(move.to_part) << "]";
-        ASSERT(_hg.nodeIsEnabled(move.node));
-        _hg.changeNodePart(move.node, block, move.to_part);
-        moves.push_back(Move{move.node, block, move.to_part});
-        ASSERT(!_queues[block].contains(nodeMoveToInt(NodeMove{move.node, block})));
+        DBG0 << "hypernode " << node << "[" << _hg.nodeWeight(node) << "] is moved from part " << block << "[" << _hg.partWeight(block) << "] to part " << to_part << "[" << _hg.partWeight(to_part) << "]";
+        ASSERT(_hg.nodeIsEnabled(node));
+        _hg.changeNodePart(node, block, to_part);
+        moves.push_back(Move{node, block, to_part});
+        ASSERT(!_queues.at(block).contains(node));
       }
       return true;
     }
@@ -235,38 +225,36 @@ class Rebalancer {
     inline bool tryToInsertIntoQ(HypernodeID node, PartitionID to_part, Gain relativeGain) {
       PartitionID from_part = _hg.partID(node);
       ASSERT(to_part != from_part);
-      NodeMove move {node, to_part};
-      if (!_queues[from_part].contains(nodeMoveToInt(move))) {
+      if (!_queues.at(from_part).contains(node)) {
         return insertIntoQ(node, to_part, relativeGain);
       }
       return false;
     }
 
     inline bool insertIntoQ(HypernodeID node, PartitionID to_part, Gain relativeGain) {
-      if (_is_inserted_into_any_q_bitmap[node]) {
+      if (_node_to_part_map.at(node) != _invalid_part) {
         return false;
       }
       PartitionID from_part = _hg.partID(node);
       ASSERT(to_part != from_part);
-      NodeMove move {node, to_part};
       ASSERT([&]() {
         int q_index = 0;
         for (const Queue& q : _queues) {
-          ASSERT(!q.contains(nodeMoveToInt(move)), V(node) << ", " << V(to_part) << ", " << V(q_index) << ", " << V(from_part));
+          ASSERT(!q.contains(node), V(node) << ", " << V(to_part) << ", " << V(q_index) << ", " << V(from_part));
           q_index++;
         }
         return true;
       } (), "Queues invalid");
-      _is_inserted_into_any_q_bitmap[node] = true;
-      _queues[from_part].push(nodeMoveToInt(move), relativeGain);
-      _queue_weights[from_part] += _hg.nodeWeight(node);
+      _node_to_part_map.at(node) = to_part;
+      _queues.at(from_part).push(node, relativeGain);
+      _queue_weights.at(from_part) += _hg.nodeWeight(node);
       return true;
     }
 
     inline void reset() {
       std::fill(_queue_weights.begin(), _queue_weights.end(), 0);
       std::fill(_adjacency_bitmap.begin(), _adjacency_bitmap.end(), false);
-      std::fill(_is_inserted_into_any_q_bitmap.begin(), _is_inserted_into_any_q_bitmap.end(), false);
+      std::fill(_node_to_part_map.begin(), _node_to_part_map.end(), _invalid_part);
       for (Queue&  q : _queues) {
         q.clear();
       }
@@ -277,15 +265,13 @@ class Rebalancer {
     }
 
     void setBlocksAdjacent(PartitionID block1, PartitionID block2) {
-      PartitionID smaller_block = std::min(block1, block2);
-      PartitionID greater_block = std::max(block1, block2);
-      _adjacency_bitmap[greater_block * (greater_block + 1) / 2 + smaller_block] = true;
+      _adjacency_bitmap.at(block1 * k + block2) = true;
+      _adjacency_bitmap.at(block2 * k + block1) = true;
     }
 
     bool blockAdjacency(const PartitionID block1, const PartitionID block2) const {
-      PartitionID smaller_block = std::min(block1, block2);
-      PartitionID greater_block = std::max(block1, block2);
-      return _adjacency_bitmap[greater_block * (greater_block + 1) / 2 + smaller_block];
+      ASSERT(_adjacency_bitmap.at(block2 * k + block1) == _adjacency_bitmap.at(block1 * k + block2));
+      return _adjacency_bitmap.at(block2 * k + block1);
     }
 
     std::pair<bool, std::pair<HypernodeID, Gain>> highestGainMoveToNotOverloadedBlock(HypernodeID node, bool ignore_neighbourhood) const {
@@ -295,7 +281,7 @@ class Rebalancer {
       bool foundAnyMove = false;
       for (PartitionID to_part = 0; to_part < k; to_part++) {
         if (from_part == to_part
-        || (!_adjacency_bitmap[from_part * (k - 1) + to_part] && !ignore_neighbourhood)
+        || (!blockAdjacency(from_part, to_part) && !ignore_neighbourhood)
         || excessWeight(from_part) <= 0
         || _hg.partWeight(to_part) + _hg.nodeWeight(node) > _current_upper_bound) {
           continue;
@@ -354,27 +340,6 @@ class Rebalancer {
       return _hg.partWeight(block) - _current_upper_bound;
     }
 
-    NodeMove nodeMoveFromInt(uint32_t move) const {
-      ASSERT(_hg.initialNumNodes() - k > 0);
-      PartitionID to_part = move / _hg.initialNumNodes();
-      HypernodeID node = move % _hg.initialNumNodes();
-      NodeMove nodeMove {node, static_cast<PartitionID>(to_part)};
-      ASSERT(nodeMoveToInt(nodeMove) == move);
-      ASSERT(_hg.nodeIsEnabled(node));
-      ASSERT(to_part < k && to_part >= 0);
-      return nodeMove;
-    }
-
-    uint32_t nodeMoveToInt(NodeMove nodeMove) const {
-      ASSERT(_hg.initialNumNodes() - k > 0);
-      ASSERT(nodeMove.to_part < k && nodeMove.to_part >= 0, V(nodeMove.to_part));
-      uint32_t move = nodeMove.node + nodeMove.to_part * _hg.initialNumNodes();
-      ASSERT(move % _hg.initialNumNodes() == nodeMove.node);
-      ASSERT(move / _hg.initialNumNodes() - nodeMove.to_part == 0);
-      ASSERT(_hg.nodeIsEnabled(nodeMove.node));
-      return move;
-    }
-
     Hypergraph& _hg;
     const Context& _context;
     PartitionID k;
@@ -382,6 +347,6 @@ class Rebalancer {
     std::vector<HypernodeWeight> _queue_weights;
     HypernodeWeight _current_upper_bound;
     std::vector<bool> _adjacency_bitmap;
-    std::vector<bool> _is_inserted_into_any_q_bitmap;
+    std::vector<PartitionID> _node_to_part_map;
 };
 }
