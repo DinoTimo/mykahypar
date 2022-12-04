@@ -276,7 +276,6 @@ class VertexPairCoarsenerBase : public CoarsenerBase {
       infos.push_back("upper bound = " + s.str());
       infos.push_back("balance speed = " + std::to_string(_context.local_search.fm.balance_convergence_speed));
       infos.push_back("balance time = " + std::to_string(_context.local_search.fm.balance_convergence_time));
-      infos.push_back("km1 increase tolerance = " + std::to_string(_context.local_search.fm.km1_increase_tolerance));
     }
     return joinVector(infos, "", "\n", "");
   }

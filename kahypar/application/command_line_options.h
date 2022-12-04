@@ -406,9 +406,6 @@ po::options_description createRefinementOptionsDescription(Context& context,
     ((initial_partitioning ? "i-r-fm-balance-convergence-speed" : "r-fm-balance-convergence-speed"),
     po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.balance_convergence_speed : &context.local_search.fm.balance_convergence_speed))->value_name("<double>"),
     "Parameter for how quickly the partition must fulfill the balance constraint")
-    ((initial_partitioning ? "i-r-fm-km1-increase-tolerance" : "r-fm-km1-increase-tolerance"),
-    po::value<double>((initial_partitioning ? &context.initial_partitioning.local_search.fm.km1_increase_tolerance : &context.local_search.fm.km1_increase_tolerance))->value_name("<double>"),
-    "Parameter on how much the km1 goal might be worsenend to ensure balanced solutions")
     ((initial_partitioning ? "i-r-fm-num-staircase-steps" : "r-fm-num-staircase-steps"),
     po::value<size_t>((initial_partitioning ? &context.initial_partitioning.local_search.fm.num_staircase_steps : &context.local_search.fm.num_staircase_steps))->value_name("<size_t>"),
     "number of steps of staircase upper bound acceptance policy \n"

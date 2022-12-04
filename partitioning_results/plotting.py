@@ -56,7 +56,6 @@ def showImbalance(num_nodes, target_imbalances, imbalances, rebalance_steps):
   if (len(infoLines) > 3):
     infoLines.pop()
     infoLines.pop()
-    infoLines.pop()
   plt.title(', '.join(infoLines))
 
 

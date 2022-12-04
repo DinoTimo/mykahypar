@@ -217,8 +217,7 @@ static inline void serialize(const Context& context, const Hypergraph& hypergrap
     }
   }
   if (context.local_search.algorithm == RefinementAlgorithm::flow_balancing_kway_fm_km1) {
-    oss << " km1_increase_tolerance=" << context.local_search.fm.km1_increase_tolerance
-        << " flow_model=" << context.local_search.fm.flow_model;
+    oss << " flow_model=" << context.local_search.fm.flow_model;
   }
   oss << " iteration=" << iteration;
   for (PartitionID i = 0; i != hypergraph.k(); ++i) {
